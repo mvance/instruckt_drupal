@@ -50,8 +50,6 @@ for the one-time project setup required.
 
 Instruckt stores annotations and screenshots in Drupal's private filesystem. Create the directory before requiring the module and configure its path in `settings.php`.
 
-Create the directory from your project root:
-
 ```bash
 mkdir -p web/private
 ```
@@ -62,46 +60,23 @@ Then add to `web/sites/default/settings.php`:
 $settings['file_private_path'] = '/absolute/server/path/to/web/private';
 ```
 
-> **DDEV:** Inside a DDEV container the project root is mounted at `/var/www/html`, so use:
-> ```php
-> $settings['file_private_path'] = '/var/www/html/web/private';
-> ```
-
 ### 2. Configure root `composer.json` (one-time project setup)
 
 Before requiring this module, ensure your project's root `composer.json` includes Asset Packagist and the npm-asset installer. Most Drupal project templates do not include these by default.
 
-Add the Asset Packagist repository:
-
 ```bash
 composer config repositories.asset-packagist composer https://asset-packagist.org
-```
-
-Require the installer extender and allow its plugin:
-
-```bash
 composer config allow-plugins.oomphinc/composer-installers-extender true
 composer require oomphinc/composer-installers-extender:^2.0
 ```
 
-Add the `npm-asset` installer path to the `extra` section of your root `composer.json`.
-
-> **Note:** There is no `composer config` command for the `extra` block — you must edit `composer.json` directly.
+Then edit `composer.json` to add `"installer-types"` and append `"type:npm-asset"` to the existing `"web/libraries/{$name}"` installer-paths entry:
 
 ```json
-"extra": {
-    "installer-types": ["npm-asset"],
-    "installer-paths": {
-        "web/libraries/{$name}": ["type:npm-asset"]
-    }
-}
+"web/libraries/{$name}": ["type:drupal-library", "type:npm-asset"]
 ```
 
-> **Important — merge, don't replace:** `drupal/recommended-project` already has an `extra` section containing an `installer-paths` block with a `"web/libraries/{$name}"` entry for `type:drupal-library`. Add `"installer-types"` as a new key and append `"type:npm-asset"` to that existing array. The merged entry should read:
-> ```json
-> "web/libraries/{$name}": ["type:drupal-library", "type:npm-asset"]
-> ```
-> Replacing the entire `extra` block will remove the scaffold, module, theme, and recipe installer paths required by Drupal core.
+_Append `"type:npm-asset"` to any existing `"web/libraries/{$name}"` entry — do not replace the entire `extra` block._
 
 ### 3. Require the module
 
@@ -113,58 +88,33 @@ This installs the module and its JavaScript dependency (`npm-asset/instruckt`), 
 
 ### 4. Enable the module
 
-**Via the admin UI:** navigate to `/admin/modules`, search for and enable both **MCP** and **Instruckt Drupal**, then save. Clear caches at `/admin/config/development/performance`.
-
-**Alternatively, with Drush:**
-
 ```bash
 drush en mcp instruckt_drupal && drush cr
 ```
 
-### 5. Configure permissions
+(Alternatively: `/admin/modules`.)
 
-At `/admin/people/permissions`, grant two permissions to the relevant role(s):
+**Automatically configured on install:** enabling the module enables the Instruckt MCP plugin and grants `access instruckt_drupal toolbar` to the `authenticated` role. Run `drush instruckt:setup` (next step) to grant `use mcp server` and configure token authentication.
 
-- **`access instruckt_drupal toolbar`** — allows users to create and view annotations via the browser toolbar
-- **`use mcp server`** — allows AI agents (and any authenticated user) to access the MCP endpoint; without this permission, `tools/list` returns an empty array with no error message
-
-### 6. Enable the MCP plugin
-
-Visit `/admin/config/mcp/plugins`, enable the **Instruckt Drupal** plugin, and save. This exposes the three MCP tools to AI agents connecting to `/mcp/post`.
-
-### 7. Configure MCP authentication
-
-> For full details on all authentication methods and transport options, see the [drupal/mcp documentation at drupalmcp.io](https://drupalmcp.io/en/mcp-server/setup-configure/).
-
-The steps below set up token authentication, the recommended method for AI agent access.
-
-#### Create an authentication token
-
-1. Visit `/admin/config/system/keys` → **Add key**
-2. Set **Key type** to *Authentication* and **Key provider** to *Configuration*
-3. Enter a long random string in **Key value** — for example:
-   ```bash
-   openssl rand -hex 32
-   ```
-4. Give the key a machine name (e.g., `mcp_auth_token`) and save
-
-#### Enable token authentication in the MCP module
-
-1. Visit `/admin/config/mcp`
-2. Under **Authentication**, enable **Token authentication**
-3. Select the key you just created
-4. Set **Token user** to a Drupal user account — MCP requests authenticated with this token will run as that user, so its roles and permissions apply
-5. Save
-
-#### Encode the token for use in client config
-
-The MCP authentication provider requires credentials in HTTP Basic auth format. Base64-encode the raw token value (no username, no colon) to produce the value you'll use in `Authorization` headers:
+### 5. Configure MCP authentication
 
 ```bash
-echo -n "your-raw-token-value" | base64
+drush instruckt:setup
 ```
 
-Keep both values — the raw token (stored in the Key) and the base64-encoded string (used in client headers).
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--role` | `authenticated` | Role to grant `use mcp server` |
+| `--user` | `1` | UID or username MCP requests run as |
+| `--key-id` | `instruckt_mcp_token` | Machine name for the auth token key entity |
+
+The command prints the `.mcp.json` snippet with the base64-encoded token ready to use (replace the URL).
+
+**Manual alternative:**
+
+1. `/admin/config/system/keys` → Add key (type: Authentication, provider: Configuration, input: text field; generate value with `openssl rand -hex 32`)
+2. `/admin/config/mcp` → Authentication → enable Token Auth, select key, set token user
+3. Base64-encode the raw token: `echo -n "your-token" | base64` — use as `Authorization: Basic <value>`
 
 ## Usage
 
@@ -208,7 +158,7 @@ https://your-site.example.com/mcp/post
 
 #### Authentication
 
-The MCP module uses HTTP Basic auth format for all authentication methods. When using token auth (see Installation step 7), base64-encode the raw token value — with no username or colon — and send it as:
+The MCP module uses HTTP Basic auth format for all authentication methods. When using token auth (see Installation step 5), base64-encode the raw token value — with no username or colon — and send it as:
 
 ```
 Authorization: Basic <base64-encoded-token>
