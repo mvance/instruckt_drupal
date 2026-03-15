@@ -1,0 +1,10 @@
+{
+  "name": "drupal/instruckt_drupal",
+  "description": "Visual feedback toolbar for AI coding agents",
+  "type": "drupal-module",
+  "license": "GPL-2.0-or-later",
+  "require": {
+    "drupal/mcp": "^1.2",
+    "npm-asset/instruckt": "^0.4"
+  }
+}

@@ -1,0 +1,140 @@
+<?php
+
+/**
+ * Implements hook_install().
+ */
+function instruckt_drupal_install() {
+  $config = \Drupal::config('instruckt_drupal.settings');
+  $storage_path = $config->get('storage_path');
+  $file_system = \Drupal::service('file_system');
+
+  // prepareDirectory() requires a variable (not expression) — PHP 8 pass-by-ref.
+  $file_system->prepareDirectory(
+    $storage_path,
+    \Drupal\Core\File\FileSystemInterface::CREATE_DIRECTORY
+  );
+  $screenshots_path = $storage_path . '/screenshots';
+  $file_system->prepareDirectory(
+    $screenshots_path,
+    \Drupal\Core\File\FileSystemInterface::CREATE_DIRECTORY
+  );
+}
+
+/**
+ * Implements hook_requirements().
+ */
+function instruckt_drupal_requirements($phase) {
+  $requirements = [];
+
+  if ($phase === 'install') {
+    // Block installation if private:// stream wrapper is not configured.
+    // Without this check, hook_install() would unconditionally call
+    // prepareDirectory('private://...') and throw InvalidStreamWrapperException,
+    // leaving the site's extension state broken.
+    if (!\Drupal::service('stream_wrapper_manager')->isValidScheme('private')) {
+      $requirements['instruckt_drupal_private_stream'] = [
+        'title' => t('Instruckt storage: Private files'),
+        'description' => t(
+          'The <code>private://</code> stream wrapper must be configured in <code>settings.php</code> '
+          . '(set <code>$settings["file_private_path"]</code>) before installing this module.'
+        ),
+        'severity' => REQUIREMENT_ERROR,
+      ];
+    }
+
+    // Also enforce storage_path prefix at install time. Although the shipped default
+    // is 'private://_instruckt', a site may have environment-specific config overrides.
+    // Enforcing here prevents hook_install() from creating a public:// storage directory.
+    // Note: active config is not yet imported at install phase, so read the YAML directly.
+    $module_path = \Drupal::service('extension.list.module')->getPath('instruckt_drupal');
+    $config_file = $module_path . '/config/install/instruckt_drupal.settings.yml';
+    $install_config = file_exists($config_file)
+      ? \Symfony\Component\Yaml\Yaml::parse(file_get_contents($config_file))
+      : [];
+    $install_path = $install_config['storage_path'] ?? \Drupal::config('instruckt_drupal.settings')->get('storage_path');
+    if (!str_starts_with($install_path ?? '', 'private://')) {
+      $requirements['instruckt_drupal_storage_scheme_install'] = [
+        'title' => t('Instruckt storage path'),
+        'value' => t('Invalid scheme'),
+        'description' => t(
+          'The configured storage path <code>@path</code> must use the <code>private://</code> stream wrapper. '
+          . 'Update <code>config/install/instruckt_drupal.settings.yml</code> or your config overrides before installing.',
+          ['@path' => $install_path]
+        ),
+        'severity' => REQUIREMENT_ERROR,
+      ];
+    }
+  }
+
+  if ($phase === 'runtime') {
+    $iife_path = \Drupal::root() . '/libraries/instruckt/dist/instruckt.iife.js';
+    if (!file_exists($iife_path) || !is_readable($iife_path)) {
+      $requirements['instruckt_drupal_js'] = [
+        'title' => t('Instruckt JS library'),
+        'value' => t('Not found'),
+        'description' => t(
+          'The instruckt IIFE bundle is missing at <code>web/libraries/instruckt/dist/instruckt.iife.js</code>. '
+          . 'Ensure <code>oomphinc/composer-installers-extender</code> is configured in your root <code>composer.json</code> '
+          . 'and run <code>composer require drupal/instruckt_drupal</code>.'
+        ),
+        'severity' => REQUIREMENT_ERROR,
+      ];
+    }
+    else {
+      $requirements['instruckt_drupal_js'] = [
+        'title' => t('Instruckt JS library'),
+        'value' => t('Installed'),
+        'severity' => REQUIREMENT_OK,
+      ];
+    }
+
+    $private_path = \Drupal::config('instruckt_drupal.settings')->get('storage_path');
+
+    // Enforce that storage_path uses private:// stream to prevent accidental
+    // web-accessible screenshot storage. Reject any other prefix (e.g. public://).
+    if (!str_starts_with($private_path ?? '', 'private://')) {
+      $requirements['instruckt_drupal_storage_scheme'] = [
+        'title' => t('Instruckt storage path'),
+        'value' => t('Invalid scheme'),
+        'description' => t(
+          'The storage path <code>@path</code> must use the <code>private://</code> stream wrapper to prevent web-accessible screenshot exposure.',
+          ['@path' => $private_path]
+        ),
+        'severity' => REQUIREMENT_ERROR,
+      ];
+    }
+
+    // Use is_writable() rather than prepareDirectory() — the hook_requirements()
+    // runtime check must be read-only; prepareDirectory() would attempt to create
+    // or chmod the directory as a side effect, which is inappropriate here.
+    $real_private = \Drupal::service('file_system')->realpath($private_path);
+    if (!$real_private || !is_dir($real_private) || !is_writable($real_private)) {
+      $requirements['instruckt_drupal_storage'] = [
+        'title' => t('Instruckt storage directory'),
+        'value' => t('Not writable'),
+        'description' => t(
+          'The storage directory <code>@path</code> could not be created or is not writable. '
+          . 'Ensure <code>$settings["file_private_path"]</code> is set in <code>settings.php</code>.',
+          ['@path' => $private_path]
+        ),
+        'severity' => REQUIREMENT_ERROR,
+      ];
+    }
+  }
+
+  return $requirements;
+}
+
+/**
+ * Implements hook_uninstall().
+ *
+ * Intentionally does NOT delete private://_instruckt/ or its contents.
+ * Annotation data is preserved across uninstall/reinstall for developer
+ * continuity. To fully reset, delete the directory manually.
+ */
+function instruckt_drupal_uninstall() {
+  // No-op: data is intentionally preserved. Document in README.
+  \Drupal::messenger()->addWarning(t(
+    'Instruckt data at private://_instruckt/ was preserved. Delete it manually if a full reset is desired.'
+  ));
+}

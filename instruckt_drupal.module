@@ -1,0 +1,147 @@
+<?php
+
+use Drupal\Core\Routing\RouteMatchInterface;
+
+/**
+ * Implements hook_library_info_build().
+ *
+ * Defines the 'toolbar' library programmatically so that the instruckt IIFE
+ * path is resolved using \Drupal::root() rather than a fragile relative path.
+ * This works regardless of the module's install location (contrib, custom, etc.)
+ */
+function instruckt_drupal_library_info_build(): array {
+  // Use the absolute FS path ONLY for file_exists() — never as a library key.
+  // Drupal's LibraryDiscoveryParser expects files outside the module to use a
+  // root-relative path with a leading slash (e.g. '/libraries/instruckt/...')
+  // as the array key. Using the absolute FS path would emit a broken
+  // <script src="/var/www/html/web/libraries/..."> tag and a 404 at runtime.
+  $iife_fs = \Drupal::root() . '/libraries/instruckt/dist/instruckt.iife.js';
+  $iife_key = '/libraries/instruckt/dist/instruckt.iife.js';
+
+  if (!file_exists($iife_fs) || !is_readable($iife_fs)) {
+    // File missing: hook_requirements() will report this as REQUIREMENT_ERROR.
+    // Returning [] means 'instruckt_drupal/toolbar' won't exist as a library.
+    // hook_page_attachments() checks _instruckt_drupal_iife_available() before
+    // attaching, to avoid render-time "library not found" exceptions.
+    return [];
+  }
+
+  // drupal_get_path() was removed in Drupal 10. Use the module extension list.
+  $modulePath = \Drupal::service('extension.list.module')->getPath('instruckt_drupal');
+
+  return [
+    'toolbar' => [
+      'js' => [
+        $iife_key => ['minified' => TRUE, 'weight' => -1],
+        $modulePath . '/js/instruckt-toolbar.js' => ['weight' => 0],
+      ],
+      'css' => [
+        'theme' => [
+          $modulePath . '/css/instruckt-toolbar.css' => [],
+        ],
+      ],
+      'dependencies' => ['core/drupal', 'core/drupalSettings'],
+    ],
+  ];
+}
+
+/**
+ * Implements hook_help().
+ */
+function instruckt_drupal_help($route_name, RouteMatchInterface $route_match) {
+  if ($route_name === 'help.page.instruckt_drupal') {
+    return '<p>' . t('Visual feedback toolbar for AI coding agents.') . '</p>';
+  }
+}
+
+/**
+ * Internal helper: returns TRUE if the instruckt IIFE library is available.
+ * Checked before attaching to avoid a render-time "library not found" exception
+ * when hook_library_info_build() returned [] due to a missing IIFE file.
+ */
+function _instruckt_drupal_iife_available(): bool {
+  return file_exists(\Drupal::root() . '/libraries/instruckt/dist/instruckt.iife.js');
+}
+
+/**
+ * Internal helper: returns TRUE if the instruckt toolbar should be shown
+ * on the current request. Uses static caching to avoid repeated service calls.
+ */
+function _instruckt_drupal_toolbar_active(): bool {
+  $active = &drupal_static(__FUNCTION__);
+  if (!isset($active)) {
+    $config = \Drupal::config('instruckt_drupal.settings');
+    $user = \Drupal::currentUser();
+    $active = $config->get('enabled')
+      && $user->hasPermission('access instruckt_drupal toolbar')
+      && !\Drupal::service('router.admin_context')->isAdminRoute();
+  }
+  return $active;
+}
+
+/**
+ * Implements hook_page_attachments().
+ */
+function instruckt_drupal_page_attachments(array &$attachments) {
+  // Cache metadata MUST be added unconditionally BEFORE any early returns.
+  // Drupal's Dynamic Page Cache uses these to vary and invalidate responses.
+  // Without this, an unauthenticated response gets cached and incorrectly
+  // served to authenticated users (cache poisoning).
+  // 'route.is_admin' is required because _instruckt_drupal_toolbar_active()
+  // calls isAdminRoute() — the same user gets different attachments on admin
+  // vs front-end pages, so the cache must vary by admin route status.
+  $attachments['#cache']['tags'][] = 'config:instruckt_drupal.settings';
+  $attachments['#cache']['contexts'][] = 'user.permissions';
+  $attachments['#cache']['contexts'][] = 'route.is_admin';
+
+  if (!_instruckt_drupal_toolbar_active() || !_instruckt_drupal_iife_available()) {
+    return;
+  }
+
+  $attachments['#attached']['library'][] = 'instruckt_drupal/toolbar';
+  // Use Url::fromRoute() so the endpoint is correct for subdirectory installs
+  // AND multilingual sites with path-prefix language negotiation (e.g. /en/...).
+  // base_path() alone omits language prefixes; Url::fromRoute() handles both.
+  // We derive the /instruckt base from the /instruckt/annotations route URL by
+  // trimming the '/annotations' suffix: strrpos() finds the last '/' in the path.
+  $annotationsUrl = \Drupal\Core\Url::fromRoute('instruckt_drupal.annotations.list')->toString();
+  $instrucktEndpoint = substr($annotationsUrl, 0, strrpos($annotationsUrl, '/'));
+  $attachments['#attached']['drupalSettings']['instruckt_drupal'] = [
+    'endpoint' => $instrucktEndpoint,
+    'theme' => 'auto',
+    'position' => 'bottom-right',
+  ];
+}
+
+/**
+ * Implements hook_page_bottom().
+ *
+ * Injects the toolbar mount point into the bottom of <body>.
+ * hook_page_bottom() is the correct hook for this — not hook_page_attachments()
+ * with html_head, which injects into <head>.
+ */
+function instruckt_drupal_page_bottom(array &$page_bottom) {
+  // Add cache metadata unconditionally before any early return (see hook_page_attachments).
+  // IMPORTANT: 'route.is_admin' is required here for the same reason as in
+  // hook_page_attachments() — _instruckt_drupal_toolbar_active() calls isAdminRoute(),
+  // so the output differs between admin and non-admin routes and the cache must vary.
+  $page_bottom['instruckt_drupal_toolbar_placeholder'] = [
+    '#markup' => '',
+    '#cache' => [
+      'tags' => ['config:instruckt_drupal.settings'],
+      'contexts' => ['user.permissions', 'route.is_admin'],
+    ],
+  ];
+
+  if (!_instruckt_drupal_toolbar_active() || !_instruckt_drupal_iife_available()) {
+    return;
+  }
+
+  $page_bottom['instruckt_drupal_toolbar'] = [
+    '#markup' => '<div id="instruckt-toolbar-root"></div>',
+    '#cache' => [
+      'tags' => ['config:instruckt_drupal.settings'],
+      'contexts' => ['user.permissions', 'route.is_admin'],
+    ],
+  ];
+}

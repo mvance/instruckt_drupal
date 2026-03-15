@@ -1,0 +1,35 @@
+services:
+  instruckt_drupal.store:
+    class: Drupal\instruckt_drupal\Service\InstrucktStore
+    arguments: ['@config.factory', '@file_system', '@logger.channel.instruckt_drupal']
+
+  logger.channel.instruckt_drupal:
+    parent: logger.channel_base
+    arguments: ['instruckt_drupal']
+
+  instruckt_drupal.source_resolver:
+    class: Drupal\instruckt_drupal\Service\SourceResolver
+    arguments: ['@theme.manager', '@extension.list.theme', '@extension.list.module', '@theme.registry', '%app.root%']
+
+  instruckt_drupal.csrf_subscriber:
+    class: Drupal\instruckt_drupal\EventSubscriber\InstrucktCsrfSubscriber
+    arguments: ['@current_user', '@csrf_token', '@config.factory']
+    tags:
+      - { name: event_subscriber }
+
+  instruckt_drupal.json_exception_subscriber:
+    class: Drupal\instruckt_drupal\EventSubscriber\InstrucktJsonExceptionSubscriber
+    tags:
+      - { name: event_subscriber }
+
+  cache_context.route.is_admin:
+    class: Drupal\instruckt_drupal\Cache\Context\RouteIsAdminCacheContext
+    arguments: ['@router.admin_context']
+    tags:
+      - { name: cache.context }
+
+  instruckt_drupal.csrf_header_access_check:
+    class: Drupal\instruckt_drupal\Access\CsrfHeaderAccessCheck
+    arguments: ['@csrf_token']
+    tags:
+      - { name: access_check, applies_to: _csrf_header }

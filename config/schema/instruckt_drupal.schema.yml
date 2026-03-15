@@ -1,0 +1,19 @@
+instruckt_drupal.settings:
+  type: config_object
+  label: 'Instruckt settings'
+  mapping:
+    enabled:
+      type: boolean
+      label: 'Enabled'
+    storage_path:
+      type: string
+      label: 'Storage path'
+    max_screenshot_size:
+      type: integer
+      label: 'Maximum screenshot size (bytes)'
+    allowed_screenshot_extensions:
+      type: sequence
+      label: 'Allowed screenshot extensions'
+      sequence:
+        type: string
+        label: 'Extension'

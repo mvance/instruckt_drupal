@@ -1,0 +1,4 @@
+# The 'toolbar' library is defined programmatically via hook_library_info_build()
+# in instruckt_drupal.module using \Drupal::root() for a layout-agnostic path.
+# Only the wrapper JS and CSS are declared here for IDE tooling reference.
+# Do NOT add a 'toolbar:' entry here — it conflicts with hook_library_info_build().

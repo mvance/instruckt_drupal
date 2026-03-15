@@ -1,0 +1,9 @@
+access instruckt_drupal toolbar:
+  title: 'Access Instruckt toolbar'
+  description: 'Allow users to see and use the Instruckt feedback toolbar'
+  restrict access: true
+
+administer instruckt_drupal:
+  title: 'Administer Instruckt'
+  description: 'Configure Instruckt settings'
+  restrict access: true

@@ -1,0 +1,42 @@
+instruckt_drupal.annotations.list:
+  path: '/instruckt/annotations'
+  defaults:
+    _controller: '\Drupal\instruckt_drupal\Controller\AnnotationController::list'
+  methods: [GET]
+  requirements:
+    _permission: 'access instruckt_drupal toolbar'
+
+instruckt_drupal.annotations.create:
+  path: '/instruckt/annotations'
+  defaults:
+    _controller: '\Drupal\instruckt_drupal\Controller\AnnotationController::createAnnotation'
+  methods: [POST]
+  requirements:
+    _permission: 'access instruckt_drupal toolbar'
+    _csrf_header: 'TRUE'
+
+instruckt_drupal.annotations.update:
+  path: '/instruckt/annotations/{id}'
+  defaults:
+    _controller: '\Drupal\instruckt_drupal\Controller\AnnotationController::update'
+  methods: [PATCH]
+  requirements:
+    _permission: 'access instruckt_drupal toolbar'
+    _csrf_header: 'TRUE'
+
+instruckt_drupal.resolve_source:
+  path: '/instruckt/resolve-source'
+  defaults:
+    _controller: '\Drupal\instruckt_drupal\Controller\AnnotationController::resolveSource'
+  methods: [POST]
+  requirements:
+    _permission: 'access instruckt_drupal toolbar'
+    _csrf_header: 'TRUE'
+
+instruckt_drupal.screenshot:
+  path: '/instruckt/screenshots/{filename}'
+  defaults:
+    _controller: '\Drupal\instruckt_drupal\Controller\AnnotationController::serveScreenshot'
+  methods: [GET]
+  requirements:
+    _permission: 'access instruckt_drupal toolbar'

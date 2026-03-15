@@ -1,0 +1,6 @@
+enabled: true
+storage_path: 'private://_instruckt'
+max_screenshot_size: 5242880
+allowed_screenshot_extensions:
+  - png
+  - svg
