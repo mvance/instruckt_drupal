@@ -275,6 +275,32 @@ curl -s -X POST https://your-site.example.com/mcp/post \
 
 The response should include `instruckt-drupal_instruckt_get_all_pending`, `instruckt-drupal_instruckt_get_screenshot`, and `instruckt-drupal_instruckt_resolve` in the `tools` array. If the array is empty, verify that the Instruckt Drupal plugin is enabled at `/admin/config/mcp/plugins` and that the authenticated token user has the `use mcp server` permission.
 
+## Troubleshooting
+
+### Node.js rejects the DDEV site certificate (DDEV users)
+
+AI agents that use Node.js under the hood — including Claude Code — do not trust the macOS or Linux system keychain. This means they reject the mkcert-issued certificate that DDEV uses for `*.ddev.site`, even if the certificate is trusted in your browser.
+
+**Symptom:** MCP tool calls fail with `unable to verify the first certificate` or the MCP server never connects.
+
+**Verify this is the cause:** Run a quick Node.js connectivity test from your host machine (not inside the DDEV container):
+
+```bash
+node -e "require('https').get('https://your-site.ddev.site/', r => console.log('OK', r.statusCode)).on('error', e => console.error('FAIL', e.message))"
+```
+
+If you see `FAIL unable to verify the first certificate` (or similar TLS error), Node.js is rejecting the cert. If `curl https://your-site.ddev.site/` succeeds at the same time, this confirms the issue is Node.js-specific — `curl` trusts the system keychain while Node.js does not.
+
+**Fix:** Set `NODE_EXTRA_CA_CERTS` to the mkcert root CA before starting your agent:
+
+```bash
+export NODE_EXTRA_CA_CERTS="$(mkcert -CAROOT)/rootCA.pem"
+```
+
+Add this line to your shell profile (`~/.zshrc`, `~/.bashrc`, etc.) to make it permanent, or set it in your project's `.env` file if your tooling loads one automatically.
+
+> **Prerequisite:** `mkcert` must be installed and its CA must be installed in your system trust store (`mkcert -install`). DDEV runs `mkcert -install` automatically during `ddev start`, so this is usually already done.
+
 ## Configuration
 
 Module settings can be managed through the admin UI at `/admin/config/development/instruckt` (requires the `administer instruckt_drupal` permission). Settings are stored in `instruckt_drupal.settings` config. The defaults are:
