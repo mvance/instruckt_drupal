@@ -102,6 +102,8 @@ class AnnotationApiTest extends BrowserTestBase {
     $this->assertEquals(100.0, $result['body']['x']); // JSON decode gives int 100, not float 100.0
     $this->assertSame('This button is misaligned', $result['body']['comment']);
     $this->assertMatchesRegularExpression('/^[0-9A-HJKMNP-TV-Z]{26}$/', $result['body']['id']);
+    $this->assertArrayHasKey('created_by', $result['body']);
+    $this->assertNotEmpty($result['body']['created_by']);
   }
 
   /**
@@ -211,6 +213,8 @@ class AnnotationApiTest extends BrowserTestBase {
     $body = json_decode($this->getSession()->getPage()->getContent(), TRUE);
     $this->assertCount(1, $body);
     $this->assertSame('Created', $body[0]['comment']);
+    $this->assertArrayHasKey('created_by', $body[0]);
+    $this->assertNotEmpty($body[0]['created_by']);
   }
 
 }

@@ -89,6 +89,7 @@ class InstrucktStoreTest extends UnitTestCase {
     $annotation = $this->store->createAnnotation([
       'x' => 10.5, 'y' => 20.5, 'comment' => 'Hello', 'element' => '.btn',
       'url' => 'http://example.com', 'intent' => 'fix', 'severity' => 'important',
+      'created_by' => 'Test User',
     ]);
     $this->assertNotNull($annotation);
     $this->assertSame('pending', $annotation['status']);
@@ -102,6 +103,8 @@ class InstrucktStoreTest extends UnitTestCase {
     $this->assertEmpty($annotation['thread']);
     $this->assertNull($annotation['resolved_by']);
     $this->assertNull($annotation['resolved_at']);
+    $this->assertArrayHasKey('created_by', $annotation);
+    $this->assertSame('Test User', $annotation['created_by']);
   }
 
   /**

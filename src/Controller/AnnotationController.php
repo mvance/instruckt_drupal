@@ -208,6 +208,9 @@ class AnnotationController extends ControllerBase {
         return new JsonResponse(['error' => "framework object requires both 'framework' and 'component' fields"], 400);
       }
     }
+    // created_by is server-controlled — always set from current user, never from client input.
+    $data['created_by'] = $this->currentUser()->getDisplayName();
+
     if (!empty($data['framework']['framework']) && !empty($data['framework']['component'])) {
       $fw = $data['framework']['framework'];
       $comp = $data['framework']['component'];

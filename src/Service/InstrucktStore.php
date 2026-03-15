@@ -253,6 +253,7 @@ class InstrucktStore {
       'status'        => 'pending',
       'framework'     => $data['framework'] ?? NULL,
       'thread'        => [],
+      'created_by'    => $data['created_by'] ?? '',
       'resolved_by'   => NULL,
       'resolved_at'   => NULL,
       'created_at'    => $now,

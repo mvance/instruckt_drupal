@@ -41,6 +41,14 @@ instruckt_drupal.screenshot:
   requirements:
     _permission: 'access instruckt_drupal toolbar'
 
+instruckt_drupal.admin.annotations:
+  path: '/admin/content/instruckt'
+  defaults:
+    _controller: '\Drupal\instruckt_drupal\Controller\AdminAnnotationListController::list'
+    _title: 'Instruckt Annotations'
+  requirements:
+    _permission: 'administer instruckt_drupal'
+
 instruckt_drupal.admin_settings:
   path: '/admin/config/development/instruckt'
   defaults:

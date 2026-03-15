@@ -177,12 +177,6 @@ for escaped mutants. Common follow-up actions:
 **Scope:** targets Unit tests only (fast). Kernel/Functional tests are excluded
 to keep each mutant run sub-second.
 
-## Future Enhancements
-
-- **Record annotation author server-side.** Add a `created_by` field to the stored annotation schema, populated in `AnnotationController::createAnnotation()` from `$this->currentUser()->getDisplayName()` before the data is passed to `InstrucktStore::createAnnotation()`. This follows the same server-side enrichment pattern as `resolved_by` and requires no changes to the upstream `instruckt` JS library or the annotation POST payload.
-
-- **Admin annotation list page.** Add a read-only admin page at `/admin/content/instruckt` (permission: `administer instruckt_drupal`) implemented as a plain controller returning a `#type => 'table'` render array. Columns: ID, URL, comment, status, created. The data source is `InstrucktStore::getAnnotations()` — no Views integration; the annotations live in a JSON file, not the database, so a lightweight controller is the right pattern.
-
 ## Credits
 
 `instruckt_drupal` is a Drupal port of the [instruckt](https://github.com/joshcirre/instruckt) JavaScript library and the [instruckt-laravel](https://github.com/joshcirre/instruckt-laravel) Laravel package. All credit for the original concept, UI, and JavaScript implementation goes to the instruckt project contributors:
