@@ -60,6 +60,12 @@ Then add to `web/sites/default/settings.php`:
 $settings['file_private_path'] = '/absolute/server/path/to/web/private';
 ```
 
+> **DDEV users:** Use the container path, not the host path:
+> ```php
+> $settings['file_private_path'] = '/var/www/html/web/private';
+> ```
+> The directory you created on the host (`web/private`) is bind-mounted at that path inside the container.
+
 ### 2. Configure root `composer.json` (one-time project setup)
 
 Before requiring this module, ensure your project's root `composer.json` includes Asset Packagist and the npm-asset installer. Most Drupal project templates do not include these by default.
@@ -73,7 +79,13 @@ composer require oomphinc/composer-installers-extender:^2.0
 Then edit `composer.json` to add `"installer-types"` and append `"type:npm-asset"` to the existing `"web/libraries/{$name}"` installer-paths entry:
 
 ```json
-"web/libraries/{$name}": ["type:drupal-library", "type:npm-asset"]
+"extra": {
+    "installer-types": ["npm-asset"],
+    "installer-paths": {
+        "web/libraries/{$name}": ["type:drupal-library", "type:npm-asset"],
+        ...
+    }
+}
 ```
 
 _Append `"type:npm-asset"` to any existing `"web/libraries/{$name}"` entry — do not replace the entire `extra` block._
@@ -109,6 +121,11 @@ drush instruckt:setup
 | `--key-id` | `instruckt_mcp_token` | Machine name for the auth token key entity |
 
 The command prints the `.mcp.json` snippet with the base64-encoded token ready to use (replace the URL).
+
+> **Troubleshooting:** If the command exits with *"Could not find user"*, pass the UID explicitly:
+> ```bash
+> drush instruckt:setup --user=1
+> ```
 
 **Manual alternative:**
 
@@ -204,7 +221,7 @@ Without valid credentials, or if the authenticated user lacks the `use mcp serve
 
 #### Available tools
 
-The agent will discover three tools. The `drupal/mcp` module prefixes all tool names with the plugin ID, so they appear as:
+The agent will discover at least three instruckt tools (additional tools from other enabled MCP plugins may also appear). The `drupal/mcp` module prefixes all tool names with the plugin ID, so they appear as:
 
 - **`instrucktdrupal_get_all_pending`** — no arguments; returns all pending annotations as JSON
 - **`instrucktdrupal_get_screenshot`** — `annotation_id` (ULID string); returns the screenshot as a base64 image
