@@ -1,6 +1,6 @@
 name: Instruckt
 type: module
-description: 'Visual feedback toolbar for AI coding agents'
+description: 'Visual feedback toolbar for AI coding agents. Wraps the instruckt JS library (MIT) via Composer.'
 core_version_requirement: ^10.3 || ^11
 package: Development
 dependencies:

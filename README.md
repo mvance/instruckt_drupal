@@ -33,6 +33,17 @@ AI coding agents (Claude, Cursor, etc.) connect to the site's [drupal/mcp](https
 - A configured private filesystem (`$settings['file_private_path']` in `settings.php`)
 - Root `composer.json` configured with [Asset Packagist](https://asset-packagist.org) and `oomphinc/composer-installers-extender` (see Installation)
 
+## Third-party Libraries
+
+This module depends on the [instruckt](https://github.com/joshcirre/instruckt)
+JavaScript library, which is licensed under the
+[MIT License](https://github.com/joshcirre/instruckt/blob/main/LICENSE).
+
+The library is **not bundled** with this module. It is downloaded automatically
+by Composer via [Asset Packagist](https://asset-packagist.org) when you run
+`composer require drupal/instruckt_drupal`. See the Installation section below
+for the one-time project setup required.
+
 ## Installation
 
 ### 1. Configure root `composer.json` (one-time project setup)
