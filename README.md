@@ -177,6 +177,10 @@ for escaped mutants. Common follow-up actions:
 **Scope:** targets Unit tests only (fast). Kernel/Functional tests are excluded
 to keep each mutant run sub-second.
 
+## Future Enhancements
+
+- **Twig template debug data in annotations.** When Drupal's Twig debug mode is enabled, the rendered HTML contains comments identifying the template file used for each region (e.g. `<!-- THEME DEBUG -->`). A new `drupal` adapter for the upstream `instruckt` JS library (`src/adapters/drupal.ts`) could walk the DOM upward from the clicked element, parse those comments, and return the template name and path as a `FrameworkContext` — populating the existing `component` and `source_file` fields without any type changes. Users would opt in by including `'drupal'` in the `adapters` array passed to `new Instruckt({...})`. The adapter should be checked before the generic `blade` fallback in `detectFramework()`. Because instruckt uses a priority-based adapter pattern, no patch to the core library is required — only a new adapter file and a one-line addition to `detectFramework()`. On the Drupal side, no backend changes are needed: `AnnotationController` already passes `framework` context through `SourceResolver` and stores it verbatim. The feature is opt-in at the JS configuration level; sites without Twig debug mode enabled receive no change in behavior.
+
 ## Credits
 
 `instruckt_drupal` is a Drupal port of the [instruckt](https://github.com/joshcirre/instruckt) JavaScript library and the [instruckt-laravel](https://github.com/joshcirre/instruckt-laravel) Laravel package. All credit for the original concept, UI, and JavaScript implementation goes to the instruckt project contributors:
