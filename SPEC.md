@@ -92,8 +92,23 @@ instruckt_drupal/
 │           └── InstrucktPlugin.php      ← one plugin, three MCP tools
 ├── js/
 │   └── instruckt-toolbar.js             ← thin Drupal init wrapper
-└── css/
-    └── instruckt-toolbar.css
+├── css/
+│   └── instruckt-toolbar.css
+└── tests/
+    └── src/
+        ├── Unit/
+        │   ├── InstrucktStoreTest.php
+        │   └── SourceResolverTest.php
+        ├── Kernel/
+        │   ├── InstrucktCsrfSubscriberTest.php
+        │   ├── InstrucktJsonExceptionSubscriberTest.php
+        │   └── InstrucktPluginTest.php
+        └── Functional/
+            ├── AnnotationApiTest.php
+            ├── ScreenshotTest.php
+            ├── PermissionTest.php
+            ├── RequirementsTest.php
+            └── McpPluginDiscoveryTest.php
 ```
 
 **Note:** `instruckt.iife.js` is NOT in the module repository. It is installed by Composer into `web/libraries/instruckt/dist/instruckt.iife.js`.
@@ -104,7 +119,7 @@ The full annotation schema stored in `annotations.json`:
 
 ```json
 {
-  "id":            "string (ULID, server-generated via Symfony\\Component\\Uid\\Ulid)",
+  "id":            "string (ULID, server-generated via InstrucktStore::generateUlid())",
   "url":           "string (required, valid URL, max 2048)",
   "x":             "float (required, page-relative X coordinate, must be >= 0)",
   "y":             "float (required, page-relative Y coordinate, must be >= 0)",
@@ -135,7 +150,7 @@ The full annotation schema stored in `annotations.json`:
 ```
 
 **Key points:**
-- `id` is always server-generated as a ULID (`new \Symfony\Component\Uid\Ulid()` — available in Drupal 10+ via Symfony 6).
+- `id` is always server-generated as a ULID via `InstrucktStore::generateUlid()` — a self-contained Crockford Base32 implementation that avoids an undeclared `symfony/uid` dependency (Symfony's `Ulid` class is not guaranteed to be available in all Drupal 10 installs).
 - `screenshot` stores a **relative path** (`screenshots/{ulid}.{ext}`), not base64 data.
 - Both `.png` and `.svg` screenshot formats are supported (instruckt uses `modern-screenshot` which can produce SVG data URLs).
 - The instruckt JS sends camelCase fields; the API receives snake_case (the instruckt JS `toSnake()` function converts before POST).
@@ -512,18 +527,20 @@ function instruckt_drupal_library_info_build(): array {
     return [];
   }
 
-  // drupal_get_path() was removed in Drupal 10. Use the module extension list.
-  $modulePath = \Drupal::service('extension.list.module')->getPath('instruckt_drupal');
-
   return [
     'toolbar' => [
       'js' => [
         $iife_key => ['minified' => TRUE, 'weight' => -1],
-        $modulePath . '/js/instruckt-toolbar.js' => ['weight' => 0],
+        // Paths without a leading slash are relative to the module directory,
+        // matching the convention used in .libraries.yml files.
+        // DO NOT prefix with $modulePath — Drupal prepends the module path
+        // automatically, and using $modulePath here causes path doubling
+        // (e.g. modules/custom/instruckt_drupal/modules/custom/instruckt_drupal/js/...).
+        'js/instruckt-toolbar.js' => ['weight' => 0],
       ],
       'css' => [
         'theme' => [
-          $modulePath . '/css/instruckt-toolbar.css' => [],
+          'css/instruckt-toolbar.css' => [],
         ],
       ],
       'dependencies' => ['core/drupal', 'core/drupalSettings'],
@@ -859,7 +876,6 @@ use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\File\FileSystemInterface;
 use Drupal\Core\Logger\LoggerChannelInterface;
 use Drupal\instruckt_drupal\Exception\InstrucktStorageException;
-use Symfony\Component\Uid\Ulid;
 
 /**
  * Manages annotation and screenshot persistence for instruckt_drupal.
@@ -1054,10 +1070,29 @@ class InstrucktStore {
   }
 
   /**
+   * Generates a ULID using a self-contained Crockford Base32 implementation.
+   * Avoids a dependency on symfony/uid which is not guaranteed in all Drupal 10 installs.
+   */
+  private function generateUlid(): string {
+    $alphabet = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+    $ms = (int) (microtime(TRUE) * 1000);
+    $ts = '';
+    for ($i = 9; $i >= 0; $i--) {
+      $ts = $alphabet[$ms & 0x1F] . $ts;
+      $ms >>= 5;
+    }
+    $rand = '';
+    for ($i = 0; $i < 16; $i++) {
+      $rand .= $alphabet[random_int(0, 31)];
+    }
+    return $ts . $rand;
+  }
+
+  /**
    * Creates a new annotation. ID is always server-generated as a ULID.
    */
   public function createAnnotation(array $data): ?array {
-    $id = (string) new Ulid();
+    $id = $this->generateUlid();
     $now = $this->now();
 
     $screenshot = NULL;
@@ -1882,7 +1917,13 @@ class InstrucktPlugin extends McpPluginBase {
     private readonly InstrucktStore $store,
     private readonly ConfigFactoryInterface $configFactory,
   ) {
-    parent::__construct($configuration, $plugin_id, $plugin_definition, $currentUser);
+    parent::__construct($configuration, $plugin_id, $plugin_definition);
+    // McpPluginBase stores currentUser via setter in its create() factory, but
+    // InstrucktPlugin overrides create() with a constructor-injection pattern.
+    // PluginBase::__construct() only accepts 3 arguments and silently ignores
+    // extras — passing $currentUser as the 4th arg to parent::__construct()
+    // leaves $this->currentUser null. Explicitly assign it here instead.
+    $this->currentUser = $currentUser;
   }
 
   public static function create(
@@ -2279,32 +2320,42 @@ On module disabled or permission denied: `[{"type": "text", "text": "Instruckt i
 
 ## Testing Strategy
 
+**PHPUnit setup:** Add `drupal/core-dev` to `require-dev` so PHPUnit is available:
+```bash
+composer require --dev drupal/core-dev:^10
+```
+Run tests from the Drupal root:
+```bash
+vendor/bin/phpunit web/modules/custom/instruckt_drupal/tests/ \
+  --bootstrap web/core/tests/bootstrap.php
+```
+
+**Kernel test isolation:** Kernel tests that mock all dependencies should use `$modules = []` (empty array). Enabling `instruckt_drupal` or `mcp` in kernel tests pulls in transitive dependencies — `drupal/mcp` requires the `key` contrib module (`mcp.settings` depends on `key.repository`), which causes `ServiceNotFoundException` unless `key` is also installed. Since all services are mocked in kernel tests, no modules need to be loaded.
+
 - **Unit tests** (`tests/src/Unit/`):
-  - `InstrucktStoreTest`: annotation CRUD, ULID generation, `LOCK_EX` flag, PNG/SVG screenshot save/delete, `realpath()` for missing files.
+  - `InstrucktStoreTest`: annotation CRUD, ULID format validation (26 chars, Crockford Base32), `LOCK_EX` flag, PNG/SVG screenshot save/delete, `realpath()` for missing files.
   - `SourceResolverTest`: Twig resolution from theme registry, base theme fallback, module template fallback, unsupported framework response.
 - **Functional tests** (`tests/src/Functional/`):
-  - `AnnotationApiTest`: all CRUD endpoints with valid/invalid payloads, CSRF header validation, full schema conformance on create/update responses.
+  - `AnnotationApiTest`: all CRUD endpoints with valid/invalid payloads, CSRF header validation, full schema conformance on create/update responses. Uses `prepareSettings()` override to set `file_private_path`.
   - `ScreenshotTest`: PNG and SVG upload and retrieval, filename validation.
   - `PermissionTest`: all routes return 403 without `access instruckt_drupal toolbar`.
   - `RequirementsTest`: `hook_requirements()` reports error when IIFE is absent, OK when present.
-- **Kernel tests** (`tests/src/Kernel/`):
+  - `McpPluginDiscoveryTest`: after `drush en instruckt_drupal`, verify the `drupal/mcp` plugin manager lists `instruckt_drupal` and all three tool names appear in `getTools()` output. This catches discovery failures from incorrect namespace/directory.
+- **Kernel tests** (`tests/src/Kernel/`) — all use `$modules = []` with mocked dependencies:
   - `InstrucktCsrfSubscriberTest`: cookie set for permitted users, absent for unpermitted users.
   - `InstrucktJsonExceptionSubscriberTest`: 403/404 on `/instruckt/*` paths return `{"error": "..."}` JSON; non-`/instruckt` paths are not intercepted.
   - `InstrucktPluginTest`: `getTools()` returns correct `Tool` objects with `ToolAnnotations`; `executeTool()` dispatches correctly and returns content-item arrays.
-- **Integration test** (`tests/src/Functional/`):
-  - `McpPluginDiscoveryTest`: after `drush en instruckt_drupal`, verify the `drupal/mcp` plugin manager lists `instruckt_drupal` and all three tool names appear in `getTools()` output. This catches discovery failures from incorrect namespace/directory.
 
 ## Deployment
 
-1. Configure root `composer.json` with `oomphinc/composer-installers-extender` and Asset Packagist (one-time project setup).
-2. `composer require drupal/instruckt_drupal` — installs module and `npm-asset/instruckt`.
-3. Verify `web/libraries/instruckt/dist/instruckt.iife.js` exists.
-4. Ensure `$settings['file_private_path']` is set in `settings.php`.
-5. `drush en mcp instruckt_drupal && drush cr` — enables modules, rebuilds container (required for new services/routes), creates `private://_instruckt/` directories.
-6. Grant `access instruckt_drupal toolbar` to the developer role.
-7. Verify toolbar appears on non-admin pages; verify Status Report shows no errors.
-8. Verify MCP plugin is discovered: visit `/admin/config/mcp/plugins` — "Instruckt Drupal" should appear. Enable it and save.
-9. Connect AI agent to `/mcp/post` endpoint (HTTP POST, JSON-RPC 2.0). Configure API token via `/admin/config/mcp` if authentication is enabled.
+1. Configure root `composer.json` with `oomphinc/composer-installers-extender` and Asset Packagist (one-time project setup — see Composer Definition section above).
+2. `composer require drupal/instruckt_drupal` — installs the module and its transitive dependency `npm-asset/instruckt`, placing `instruckt.iife.js` at `web/libraries/instruckt/dist/instruckt.iife.js` automatically.
+3. Ensure `$settings['file_private_path']` is set in `settings.php`.
+4. `drush en mcp instruckt_drupal && drush cr` — enables modules, rebuilds container (required for new services/routes), creates `private://_instruckt/` directories.
+5. Grant `access instruckt_drupal toolbar` to the developer role.
+6. Verify toolbar appears on non-admin pages; verify Status Report shows no errors.
+7. Verify MCP plugin is discovered: visit `/admin/config/mcp/plugins` — "Instruckt Drupal" should appear. Enable it and save.
+8. Connect AI agent to `/mcp/post` endpoint (HTTP POST, JSON-RPC 2.0). Configure API token via `/admin/config/mcp` if authentication is enabled.
 
 **Rollback**: `drush pmu instruckt_drupal`. The `private://_instruckt/` directory and `web/libraries/instruckt/` are not removed automatically and must be cleaned up manually if desired.
 
@@ -2312,6 +2363,6 @@ On module disabled or permission denied: `[{"type": "text", "text": "Instruckt i
 
 1. **Annotation deletion**: Neither the Laravel version nor this spec includes a DELETE endpoint. Resolution/dismissal is the only lifecycle close. A DELETE endpoint could be added in a future version if needed.
 2. **Multi-site**: `private://` storage is per-site; no special handling required.
-3. **instruckt JS updates**: When a new `instruckt` npm version is released, update `"npm-asset/instruckt"` version constraint in `composer.json` and run `composer update npm-asset/instruckt`. Verify the IIFE is still self-contained (no new external dependencies).
+3. **instruckt JS updates**: When a new `instruckt` npm version is released, update the `"npm-asset/instruckt"` version constraint in `composer.json` and run `composer update npm-asset/instruckt`. Verify the IIFE is still self-contained (no new external dependencies).
 4. **Admin UI**: No settings form is specified. The `instruckt_drupal.settings.yml` config could be exposed via a settings form at `/admin/config/development/instruckt` in a future version.
 5. **Migration to entity storage**: If flat JSON proves insufficient (e.g., for multi-site or query flexibility), the migration path is: export `annotations.json` → write a `hook_post_update_*` function that reads the JSON and creates Drupal config or content entities. No migration module is required for the initial version.
