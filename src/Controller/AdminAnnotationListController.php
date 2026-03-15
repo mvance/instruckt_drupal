@@ -4,6 +4,7 @@ namespace Drupal\instruckt_drupal\Controller;
 
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Link;
+use Drupal\Core\Pager\PagerManagerInterface;
 use Drupal\Core\Url;
 use Drupal\Core\Utility\TableSort;
 use Drupal\instruckt_drupal\Service\InstrucktStore;
@@ -21,6 +22,7 @@ class AdminAnnotationListController extends ControllerBase {
   public function __construct(
     private readonly InstrucktStore $store,
     private readonly RequestStack $requestStack,
+    private readonly PagerManagerInterface $pagerManager,
   ) {}
 
   /**
@@ -30,6 +32,7 @@ class AdminAnnotationListController extends ControllerBase {
     return new static(
       $container->get('instruckt_drupal.store'),
       $container->get('request_stack'),
+      $container->get('pager.manager'),
     );
   }
 
@@ -43,7 +46,7 @@ class AdminAnnotationListController extends ControllerBase {
       'comment'    => ['data' => $this->t('Comment'), 'specifier' => 'comment', 'field' => 'comment'],
       'status'     => ['data' => $this->t('Status'), 'specifier' => 'status', 'field' => 'status'],
       'created_at' => ['data' => $this->t('Created'), 'specifier' => 'created_at', 'field' => 'created_at'],
-      'screenshot' => ['data' => $this->t('Screenshot')],
+      'screenshot' => ['data' => $this->t('Screenshot'), 'specifier' => 'screenshot', 'field' => 'screenshot'],
     ];
 
     $request = $this->requestStack->getCurrentRequest();
@@ -57,6 +60,11 @@ class AdminAnnotationListController extends ControllerBase {
       $cmp = strcmp((string) ($a[$field] ?? ''), (string) ($b[$field] ?? ''));
       return $sort === 'desc' ? -$cmp : $cmp;
     });
+
+    $pageSize    = 25;
+    $total       = count($annotations);
+    $currentPage = $this->pagerManager->createPager($total, $pageSize)->getCurrentPage();
+    $annotations = array_slice($annotations, $currentPage * $pageSize, $pageSize);
 
     $rows = [];
     foreach ($annotations as $annotation) {
@@ -90,11 +98,16 @@ class AdminAnnotationListController extends ControllerBase {
     }
 
     return [
-      '#type'     => 'table',
-      '#header'   => $header,
-      '#rows'     => $rows,
-      '#empty'    => $this->t('No annotations found.'),
-      '#attached' => ['library' => ['core/drupal.tableheader']],
+      'table' => [
+        '#type'     => 'table',
+        '#header'   => $header,
+        '#rows'     => $rows,
+        '#empty'    => $this->t('No annotations found.'),
+        '#attached' => ['library' => ['core/drupal.tableheader']],
+      ],
+      'pager' => [
+        '#type' => 'pager',
+      ],
     ];
   }
 

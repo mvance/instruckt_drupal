@@ -122,6 +122,7 @@ class AdminAnnotationListTest extends BrowserTestBase {
     $this->assertSession()->pageTextContains('Comment');
     $this->assertSession()->pageTextContains('Status');
     $this->assertSession()->pageTextContains('Created');
+    $this->assertSession()->pageTextContains('Screenshot');
   }
 
   /**
@@ -258,6 +259,32 @@ class AdminAnnotationListTest extends BrowserTestBase {
     $this->assertSession()->statusCodeEquals(200);
     $this->assertSession()->pageTextContains('Detail page comment');
     $this->assertSession()->pageTextContains('pending');
+  }
+
+  /**
+   * Tests pager appears when more than 25 annotations exist.
+   */
+  public function testPagerAppearsWithManyAnnotations(): void {
+    $admin = $this->drupalCreateUser([
+      'administer instruckt_drupal',
+      'access instruckt_drupal toolbar',
+    ]);
+    $this->drupalLogin($admin);
+    $token = $this->getXsrfToken();
+
+    for ($i = 1; $i <= 26; $i++) {
+      $this->jsonRequest('POST', '/instruckt/annotations', [
+        'x'       => $i,
+        'y'       => $i,
+        'comment' => "Pager annotation $i",
+        'element' => ".el$i",
+        'url'     => "http://example.com/page$i",
+      ], $token);
+    }
+
+    $this->drupalGet('/admin/content/instruckt');
+    $this->assertSession()->statusCodeEquals(200);
+    $this->assertSession()->elementExists('css', 'nav.pager');
   }
 
   /**
