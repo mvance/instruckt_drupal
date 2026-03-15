@@ -26,18 +26,17 @@ function instruckt_drupal_library_info_build(): array {
     return [];
   }
 
-  // drupal_get_path() was removed in Drupal 10. Use the module extension list.
-  $modulePath = \Drupal::service('extension.list.module')->getPath('instruckt_drupal');
-
   return [
     'toolbar' => [
       'js' => [
         $iife_key => ['minified' => TRUE, 'weight' => -1],
-        $modulePath . '/js/instruckt-toolbar.js' => ['weight' => 0],
+        // Paths without a leading slash are relative to the module directory,
+        // matching the convention used in .libraries.yml files.
+        'js/instruckt-toolbar.js' => ['weight' => 0],
       ],
       'css' => [
         'theme' => [
-          $modulePath . '/css/instruckt-toolbar.css' => [],
+          'css/instruckt-toolbar.css' => [],
         ],
       ],
       'dependencies' => ['core/drupal', 'core/drupalSettings'],
