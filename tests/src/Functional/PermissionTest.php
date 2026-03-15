@@ -38,6 +38,22 @@ class PermissionTest extends BrowserTestBase {
   }
 
   /**
+   * {@inheritdoc}
+   *
+   * hook_install() grants 'access instruckt_drupal toolbar' to the
+   * authenticated role. Revoke it here so tests that create unpermitted users
+   * are not confounded by the role-level grant.
+   */
+  protected function setUp(): void {
+    parent::setUp();
+    $role = \Drupal\user\Entity\Role::load('authenticated');
+    if ($role && $role->hasPermission('access instruckt_drupal toolbar')) {
+      $role->revokePermission('access instruckt_drupal toolbar');
+      $role->save();
+    }
+  }
+
+  /**
    * Tests that anonymous users receive 403 on all instruckt routes.
    */
   public function testAnonymousUserCannotAccessAnnotationList(): void {

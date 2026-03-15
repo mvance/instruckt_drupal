@@ -26,6 +26,22 @@ class TwigDebugLibraryTest extends BrowserTestBase {
   protected $defaultTheme = 'stark';
 
   /**
+   * {@inheritdoc}
+   *
+   * hook_install() grants 'access instruckt_drupal toolbar' to the
+   * authenticated role. Revoke it here so the no-permission user test is not
+   * confounded by the role-level grant.
+   */
+  protected function setUp(): void {
+    parent::setUp();
+    $role = \Drupal\user\Entity\Role::load('authenticated');
+    if ($role && $role->hasPermission('access instruckt_drupal toolbar')) {
+      $role->revokePermission('access instruckt_drupal toolbar');
+      $role->save();
+    }
+  }
+
+  /**
    * Tests that the twig-debug library is attached for an authorized user.
    */
   public function testTwigDebugLibraryAttachedForAuthorizedUser(): void {
