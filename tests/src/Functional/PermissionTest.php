@@ -11,9 +11,23 @@ use Drupal\Tests\BrowserTestBase;
  */
 class PermissionTest extends BrowserTestBase {
 
+  /**
+   * Modules to enable.
+   *
+   * @var array
+   */
   protected static $modules = ['instruckt_drupal'];
+
+  /**
+   * Default theme.
+   *
+   * @var string
+   */
   protected $defaultTheme = 'stark';
 
+  /**
+   * {@inheritdoc}
+   */
   protected function prepareSettings(): void {
     parent::prepareSettings();
     $settings['settings']['file_private_path'] = (object) [
@@ -56,7 +70,8 @@ class PermissionTest extends BrowserTestBase {
       json_encode(['x' => 1, 'y' => 1, 'comment' => 'x', 'element' => '.a', 'url' => 'http://example.com'])
     );
     $status = $this->getSession()->getStatusCode();
-    $this->assertContains($status, [403, 400]); // 403 from permission, or 400 from missing CSRF
+    // 403 from permission, or 400 from missing CSRF
+    $this->assertContains($status, [403, 400]);
   }
 
   /**

@@ -18,11 +18,19 @@ use Drupal\mcp\ServerFeatures\Tool;
  */
 class InstrucktPluginTest extends KernelTestBase {
 
+  /**
+   * Modules to enable.
+   *
+   * @var array
+   */
   protected static $modules = [];
 
   // Valid 26-character Crockford Base32 ULID used across tests.
   private const VALID_ULID = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
 
+  /**
+   * Builds the plugin with mocked dependencies.
+   */
   private function buildPlugin(bool $enabled = TRUE, bool $hasPermission = TRUE, array $pendingAnnotations = []): InstrucktPlugin {
     $config = $this->createMock(ImmutableConfig::class);
     $config->method('get')->with('enabled')->willReturn($enabled);
@@ -131,8 +139,9 @@ class InstrucktPluginTest extends KernelTestBase {
   // ---------------------------------------------------------------------------
 
   /**
-   * Plugin ID must satisfy drupal/mcp's validation: letters, numbers, hyphens
-   * only. Underscores cause an Internal Error at runtime on every MCP request.
+   * Plugin ID must satisfy drupal/mcp validation (letters, numbers, hyphens only).
+   *
+   * Underscores cause an Internal Error at runtime on every MCP request.
    */
   public function testPluginIdIsValidMcpId(): void {
     $this->assertMatchesRegularExpression(
@@ -143,6 +152,8 @@ class InstrucktPluginTest extends KernelTestBase {
   }
 
   /**
+   * Tool names include the plugin ID prefix used by drupal/mcp.
+   *
    * The MCP module prefixes tool names with the plugin ID when building the
    * tools/list response and when routing tools/call requests. This test locks
    * in the exact names that MCP clients must use.

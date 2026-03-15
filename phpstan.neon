@@ -1,0 +1,15 @@
+includes:
+    - phpstan-baseline.neon
+
+parameters:
+    level: 1
+
+    paths:
+        - src
+        - tests/src
+
+    # drupal_root omitted — mglaman/phpstan-drupal 1.3.x auto-discovers
+    # the Drupal root via DrupalFinderComposerRuntime (setting it triggers
+    # an E_USER_DEPRECATED warning).
+
+    reportUnmatchedIgnoredErrors: false

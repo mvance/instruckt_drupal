@@ -21,6 +21,9 @@ class AdminAnnotationListController extends ControllerBase {
     private readonly RequestStack $requestStack,
   ) {}
 
+  /**
+   * {@inheritdoc}
+   */
   public static function create(ContainerInterface $container): static {
     return new static(
       $container->get('instruckt_drupal.store'),
@@ -28,13 +31,16 @@ class AdminAnnotationListController extends ControllerBase {
     );
   }
 
+  /**
+   * Renders the admin annotation list table.
+   */
   public function list(): array {
     $header = [
-      'id'         => ['data' => $this->t('ID'),      'specifier' => 'id',         'field' => 'id'],
-      'url'        => ['data' => $this->t('URL'),      'specifier' => 'url',        'field' => 'url'],
-      'comment'    => ['data' => $this->t('Comment'),  'specifier' => 'comment',    'field' => 'comment'],
-      'status'     => ['data' => $this->t('Status'),   'specifier' => 'status',     'field' => 'status'],
-      'created_at' => ['data' => $this->t('Created'),  'specifier' => 'created_at', 'field' => 'created_at'],
+      'id'         => ['data' => $this->t('ID'), 'specifier' => 'id', 'field' => 'id'],
+      'url'        => ['data' => $this->t('URL'), 'specifier' => 'url', 'field' => 'url'],
+      'comment'    => ['data' => $this->t('Comment'), 'specifier' => 'comment', 'field' => 'comment'],
+      'status'     => ['data' => $this->t('Status'), 'specifier' => 'status', 'field' => 'status'],
+      'created_at' => ['data' => $this->t('Created'), 'specifier' => 'created_at', 'field' => 'created_at'],
     ];
 
     $request = $this->requestStack->getCurrentRequest();
@@ -78,6 +84,9 @@ class AdminAnnotationListController extends ControllerBase {
     ];
   }
 
+  /**
+   * Renders the detail view for a single annotation.
+   */
   public function view(string $id): array {
     $annotations = $this->store->getAnnotations();
     $annotation  = NULL;

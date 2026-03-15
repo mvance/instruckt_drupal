@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<ruleset name="instruckt_drupal">
+  <description>PHP_CodeSniffer ruleset for the instruckt_drupal module.</description>
+
+  <file>src</file>
+  <file>tests/src</file>
+
+  <rule ref="Drupal"/>
+  <rule ref="DrupalPractice"/>
+
+  <config name="php_version" value="80300"/>
+
+  <arg value="sp"/>
+  <arg name="colors"/>
+</ruleset>

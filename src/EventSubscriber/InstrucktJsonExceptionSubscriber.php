@@ -17,11 +17,17 @@ use Symfony\Component\HttpKernel\KernelEvents;
  */
 final class InstrucktJsonExceptionSubscriber implements EventSubscriberInterface {
 
+  /**
+   * {@inheritdoc}
+   */
   public static function getSubscribedEvents(): array {
     // Priority 0 runs before Drupal's DefaultExceptionSubscriber (priority -50).
     return [KernelEvents::EXCEPTION => ['onException', 0]];
   }
 
+  /**
+   * Returns JSON error responses for exceptions on instruckt routes.
+   */
   public function onException(ExceptionEvent $event): void {
     $request = $event->getRequest();
     // Only intercept /instruckt/* paths.

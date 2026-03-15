@@ -10,6 +10,9 @@ use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
+/**
+ * Provides an administration settings form for the instruckt_drupal module.
+ */
 class SettingsForm extends ConfigFormBase {
 
   public function __construct(
@@ -19,6 +22,9 @@ class SettingsForm extends ConfigFormBase {
     parent::__construct($config_factory, $typed_config_manager);
   }
 
+  /**
+   * {@inheritdoc}
+   */
   public static function create(ContainerInterface $container): static {
     return new static(
       $container->get('config.factory'),
@@ -26,14 +32,23 @@ class SettingsForm extends ConfigFormBase {
     );
   }
 
+  /**
+   * {@inheritdoc}
+   */
   public function getFormId(): string {
     return 'instruckt_drupal_settings';
   }
 
+  /**
+   * {@inheritdoc}
+   */
   protected function getEditableConfigNames(): array {
     return ['instruckt_drupal.settings'];
   }
 
+  /**
+   * {@inheritdoc}
+   */
   public function buildForm(array $form, FormStateInterface $form_state): array {
     $config = $this->config('instruckt_drupal.settings');
 
@@ -47,11 +62,7 @@ class SettingsForm extends ConfigFormBase {
     $form['storage_path'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Storage path'),
-      '#description' => $this->t(
-        'Stream wrapper URI where annotations and screenshots are stored (e.g. <code>private://_instruckt</code>). '
-        . 'Must use the <code>private://</code> scheme to prevent web-accessible exposure of screenshot files. '
-        . '<strong>Warning:</strong> changing this after installation leaves existing data at the old path; you must move the directory manually.'
-      ),
+      '#description' => $this->t('Stream wrapper URI where annotations and screenshots are stored (e.g. <code>private://_instruckt</code>). Must use the <code>private://</code> scheme to prevent web-accessible exposure of screenshot files. <strong>Warning:</strong> changing this after installation leaves existing data at the old path; you must move the directory manually.'),
       '#default_value' => $config->get('storage_path'),
     ];
 
@@ -75,6 +86,9 @@ class SettingsForm extends ConfigFormBase {
     return parent::buildForm($form, $form_state);
   }
 
+  /**
+   * {@inheritdoc}
+   */
   public function validateForm(array &$form, FormStateInterface $form_state): void {
     $path = trim((string) $form_state->getValue('storage_path'));
     if ($path === '') {
@@ -100,6 +114,9 @@ class SettingsForm extends ConfigFormBase {
     parent::validateForm($form, $form_state);
   }
 
+  /**
+   * {@inheritdoc}
+   */
   public function submitForm(array &$form, FormStateInterface $form_state): void {
     $bytes = (int) round((float) $form_state->getValue('max_screenshot_size_mb') * 1048576);
     $extensions = array_values(array_filter(

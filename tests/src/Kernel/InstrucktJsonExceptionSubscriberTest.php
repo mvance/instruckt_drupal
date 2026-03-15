@@ -18,15 +18,31 @@ use Symfony\Component\HttpKernel\HttpKernelInterface;
  */
 class InstrucktJsonExceptionSubscriberTest extends KernelTestBase {
 
+  /**
+   * Modules to enable.
+   *
+   * @var array
+   */
   protected static $modules = [];
 
+  /**
+   * The subscriber under test.
+   *
+   * @var \Drupal\instruckt_drupal\EventSubscriber\InstrucktJsonExceptionSubscriber
+   */
   private InstrucktJsonExceptionSubscriber $subscriber;
 
+  /**
+   * {@inheritdoc}
+   */
   protected function setUp(): void {
     parent::setUp();
     $this->subscriber = new InstrucktJsonExceptionSubscriber();
   }
 
+  /**
+   * Builds an ExceptionEvent for the given path and exception.
+   */
   private function makeEvent(string $path, \Throwable $exception): ExceptionEvent {
     $kernel = $this->createMock(HttpKernelInterface::class);
     $request = Request::create($path);

@@ -2,6 +2,8 @@
 
 namespace Drupal\instruckt_drupal\Service;
 
+use Drupal\Core\File\Exception\FileException;
+use Drupal\Core\Config\ImmutableConfig;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\File\FileSystemInterface;
 use Drupal\Core\Logger\LoggerChannelInterface;
@@ -13,13 +15,26 @@ use Drupal\instruckt_drupal\Exception\InstrucktStorageException;
 class InstrucktStore {
 
   /**
-   * CSRF token scope. Shared constant used by CsrfSubscriber and CsrfHeaderAccessCheck.
+   * CSRF token scope.
+   *
+   * Shared constant used by CsrfSubscriber and CsrfHeaderAccessCheck.
    * Using a named constant prevents typos across the codebase.
    */
   const CSRF_TOKEN_ID = 'instruckt_drupal';
 
+  /**
+   * The filesystem path where annotations and screenshots are stored.
+   *
+   * @var string
+   */
   private string $storagePath;
-  private \Drupal\Core\Config\ImmutableConfig $config;
+
+  /**
+   * The instruckt_drupal module configuration.
+   *
+   * @var \Drupal\Core\Config\ImmutableConfig
+   */
+  private ImmutableConfig $config;
 
   public function __construct(
     ConfigFactoryInterface $configFactory,
@@ -30,14 +45,23 @@ class InstrucktStore {
     $this->storagePath = $this->config->get('storage_path');
   }
 
+  /**
+   * Returns the absolute path to the annotations JSON file.
+   */
   private function annotationsPath(): string {
     return $this->storagePath . '/annotations.json';
   }
 
+  /**
+   * Returns the absolute path to the screenshots directory.
+   */
   private function screenshotsDir(): string {
     return $this->storagePath . '/screenshots';
   }
 
+  /**
+   * Returns the current UTC time as an ISO 8601 string.
+   */
   private function now(): string {
     return (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->format(\DateTimeInterface::ATOM);
   }
@@ -100,6 +124,9 @@ class InstrucktStore {
     return $data;
   }
 
+  /**
+   * Returns only annotations with status "pending".
+   */
   public function getPendingAnnotations(): array {
     return array_values(array_filter(
       $this->getAnnotations(),
@@ -125,7 +152,7 @@ class InstrucktStore {
    * The .lock file's inode never changes, so all writers always compete on the same
    * inode. Reads (getAnnotations) are lock-free because rename() is atomic on POSIX.
    *
-   * @throws InstrucktStorageException on any I/O or parse failure.
+   * @throws \Drupal\instruckt_drupal\Exception\InstrucktStorageException on any I/O or parse failure.
    *   Callers distinguish storage errors (exception) from domain-level NULL
    *   (e.g. annotation not found, which the callback sets via reference).
    */
@@ -174,7 +201,8 @@ class InstrucktStore {
         );
         throw new InstrucktStorageException("annotations.json parse failure: $err");
       }
-    } else {
+    }
+    else {
       $annotations = [];
     }
 
@@ -188,7 +216,8 @@ class InstrucktStore {
         array_values($annotations),
         JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR
       ) . "\n";
-    } catch (\JsonException $e) {
+    }
+    catch (\JsonException $e) {
       flock($lockFp, LOCK_UN);
       fclose($lockFp);
       $this->logger->error('InstrucktStore: JSON encode failed: @msg', ['@msg' => $e->getMessage()]);
@@ -264,7 +293,8 @@ class InstrucktStore {
       $this->withAnnotationsLocked(function (array &$all) use ($annotation): void {
         $all[] = $annotation;
       });
-    } catch (InstrucktStorageException $e) {
+    }
+    catch (InstrucktStorageException $e) {
       // Storage failure: clean up the screenshot we already wrote (if any).
       if ($screenshot !== NULL) {
         $this->deleteScreenshot($screenshot);
@@ -299,47 +329,48 @@ class InstrucktStore {
     $screenshotToDelete = NULL;
 
     try {
-    $this->withAnnotationsLocked(function (array &$all) use ($id, $data, $allowed, $resolvedBy, &$updated, &$screenshotToDelete): void {
-      foreach ($all as &$annotation) {
-        if ($annotation['id'] !== $id) {
-          continue;
-        }
-        foreach ($data as $key => $value) {
-          if (in_array($key, $allowed, TRUE)) {
-            // 'thread' is REPLACED wholesale, not appended — the client owns
-            // the full thread array and sends the complete new state each time.
-            $annotation[$key] = $value;
+      $this->withAnnotationsLocked(function (array &$all) use ($id, $data, $allowed, $resolvedBy, &$updated, &$screenshotToDelete): void {
+        foreach ($all as &$annotation) {
+          if ($annotation['id'] !== $id) {
+            continue;
           }
-        }
-        $annotation['updated_at'] = $this->now();
+          foreach ($data as $key => $value) {
+            if (in_array($key, $allowed, TRUE)) {
+              // 'thread' is REPLACED wholesale, not appended — the client owns
+              // the full thread array and sends the complete new state each time.
+              $annotation[$key] = $value;
+            }
+          }
+          $annotation['updated_at'] = $this->now();
 
-        $newStatus = $data['status'] ?? NULL;
-        if (in_array($newStatus, ['resolved', 'dismissed'], TRUE)) {
-          $screenshotToDelete = $annotation['screenshot'] ?? NULL;
-          // Nullify the reference so the stored annotation doesn't dangle.
-          $annotation['screenshot'] = NULL;
-          // Auto-populate resolution metadata server-side — never from client input.
-          // resolved_by and resolved_at are intentionally NOT in $allowed;
-          // they are set here unconditionally to prevent spoofing.
-          // $resolvedBy distinguishes 'human' (HTTP) from 'agent' (MCP).
-          $annotation['resolved_by'] = $resolvedBy;
-          $annotation['resolved_at'] = $this->now();
-        }
-        // Clear resolution fields when reopening to pending.
-        if ($newStatus === 'pending') {
-          $annotation['resolved_by'] = NULL;
-          $annotation['resolved_at'] = NULL;
-        }
+          $newStatus = $data['status'] ?? NULL;
+          if (in_array($newStatus, ['resolved', 'dismissed'], TRUE)) {
+            $screenshotToDelete = $annotation['screenshot'] ?? NULL;
+            // Nullify the reference so the stored annotation doesn't dangle.
+            $annotation['screenshot'] = NULL;
+            // Auto-populate resolution metadata server-side — never from client input.
+            // resolved_by and resolved_at are intentionally NOT in $allowed;
+            // they are set here unconditionally to prevent spoofing.
+            // $resolvedBy distinguishes 'human' (HTTP) from 'agent' (MCP).
+            $annotation['resolved_by'] = $resolvedBy;
+            $annotation['resolved_at'] = $this->now();
+          }
+          // Clear resolution fields when reopening to pending.
+          if ($newStatus === 'pending') {
+            $annotation['resolved_by'] = NULL;
+            $annotation['resolved_at'] = NULL;
+          }
 
-        $updated = $annotation;
-        break;
-      }
-      unset($annotation);
-    });
-    } catch (InstrucktStorageException $e) {
+          $updated = $annotation;
+          break;
+        }
+        unset($annotation);
+      });
+    }
+    catch (InstrucktStorageException $e) {
       // Propagate storage errors as FALSE so callers distinguish:
-      //   NULL  → annotation not found (404)
-      //   FALSE → storage/I/O error (500)
+      // NULL → annotation not found (404)
+      // FALSE → storage/I/O error (500)
       return FALSE;
     }
 
@@ -378,7 +409,8 @@ class InstrucktStore {
     $rawData = $parts[1] ?? '';
 
     if (str_contains($header, ';base64')) {
-      $binary = base64_decode($rawData, TRUE);  // strict mode
+      // Strict mode.
+      $binary = base64_decode($rawData, TRUE);
       $ext = str_contains($header, 'image/svg+xml') ? 'svg' : 'png';
     }
     else {
@@ -419,7 +451,7 @@ class InstrucktStore {
   /**
    * Returns the real filesystem path for a screenshot, or NULL if not found.
    *
-   * realpath() is used here because BinaryFileResponse requires a real path,
+   * Realpath() is used here because BinaryFileResponse requires a real path,
    * not a stream wrapper URI.
    */
   public function getScreenshotRealPath(string $relPath): ?string {
@@ -430,6 +462,9 @@ class InstrucktStore {
     return $this->fileSystem->realpath($uri) ?: NULL;
   }
 
+  /**
+   * Deletes a screenshot file by its relative path.
+   */
   public function deleteScreenshot(?string $relPath): void {
     if (!$relPath) {
       return;
@@ -441,7 +476,8 @@ class InstrucktStore {
       // (e.g. two agents resolving simultaneously) does not bubble a 500.
       try {
         $this->fileSystem->delete($uri);
-      } catch (\Drupal\Core\File\Exception\FileException $e) {
+      }
+      catch (FileException $e) {
         $this->logger->warning('Could not delete screenshot @uri: @message', [
           '@uri' => $uri,
           '@message' => $e->getMessage(),
@@ -449,4 +485,5 @@ class InstrucktStore {
       }
     }
   }
+
 }

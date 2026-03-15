@@ -27,10 +27,16 @@ class InstrucktCsrfSubscriber implements EventSubscriberInterface {
     private readonly ConfigFactoryInterface $configFactory,
   ) {}
 
+  /**
+   * {@inheritdoc}
+   */
   public static function getSubscribedEvents(): array {
     return [KernelEvents::RESPONSE => ['onResponse', 0]];
   }
 
+  /**
+   * Sets the XSRF-TOKEN cookie when needed.
+   */
   public function onResponse(ResponseEvent $event): void {
     if (!$event->isMainRequest()) {
       return;
@@ -57,15 +63,16 @@ class InstrucktCsrfSubscriber implements EventSubscriberInterface {
 
     // Not HttpOnly: the instruckt JS must read this cookie client-side.
     // Secure: auto-detected from the current request — true on HTTPS, false on HTTP.
-    //   This means the module is secure-by-default on HTTPS environments (Lando, DDEV
-    //   with TLS, production) and still works on plain HTTP dev setups.
+    // This means the module is secure-by-default on HTTPS environments (Lando, DDEV
+    // with TLS, production) and still works on plain HTTP dev setups.
     // SameSite=Lax: mitigates CSRF from cross-site navigations.
     // Path: base_path() (e.g. '/' for root installs, '/subdir/' for subdirectory installs).
-    //   Using '/' alone would leak the cookie to sibling Drupal sites on the same domain;
-    //   base_path() scopes it to this Drupal installation's path prefix.
+    // Using '/' alone would leak the cookie to sibling Drupal sites on the same domain;
+    // base_path() scopes it to this Drupal installation's path prefix.
     $secure = $event->getRequest()->isSecure();
     $event->getResponse()->headers->setCookie(
-      new Cookie('XSRF-TOKEN', $token, 0, base_path(), null, $secure, false, false, 'Lax')
+      new Cookie('XSRF-TOKEN', $token, 0, base_path(), NULL, $secure, FALSE, FALSE, 'Lax')
     );
   }
+
 }

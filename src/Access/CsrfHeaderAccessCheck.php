@@ -20,6 +20,9 @@ class CsrfHeaderAccessCheck implements AccessInterface {
 
   public function __construct(private readonly CsrfTokenGenerator $csrfToken) {}
 
+  /**
+   * {@inheritdoc}
+   */
   public function access(Route $route, Request $request): AccessResultInterface {
     if ($route->getRequirement('_csrf_header') !== 'TRUE') {
       return AccessResult::neutral();
@@ -41,4 +44,5 @@ class CsrfHeaderAccessCheck implements AccessInterface {
       ? AccessResult::allowed()->setCacheMaxAge(0)
       : AccessResult::forbidden('Invalid CSRF token')->setCacheMaxAge(0);
   }
+
 }

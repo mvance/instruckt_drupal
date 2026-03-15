@@ -17,7 +17,9 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class AnnotationController extends ControllerBase {
 
-  // Reusable 503 response for when the module is administratively disabled.
+  /**
+   * Reusable 503 response for when the module is administratively disabled.
+   */
   private function disabledResponse(): JsonResponse {
     return new JsonResponse(['error' => 'Instruckt is disabled'], 503, ['Cache-Control' => 'no-store']);
   }
@@ -28,6 +30,9 @@ class AnnotationController extends ControllerBase {
     private readonly LoggerChannelInterface $logger,
   ) {}
 
+  /**
+   * {@inheritdoc}
+   */
   public static function create(ContainerInterface $container): static {
     return new static(
       $container->get('instruckt_drupal.store'),
@@ -36,6 +41,9 @@ class AnnotationController extends ControllerBase {
     );
   }
 
+  /**
+   * Returns all stored annotations as JSON.
+   */
   public function list(): JsonResponse {
     if (!$this->config('instruckt_drupal.settings')->get('enabled')) {
       return $this->disabledResponse();
@@ -48,6 +56,9 @@ class AnnotationController extends ControllerBase {
     ]);
   }
 
+  /**
+   * Creates a new annotation from the request body.
+   */
   public function createAnnotation(Request $request): JsonResponse {
     if (!$this->config('instruckt_drupal.settings')->get('enabled')) {
       return $this->disabledResponse();
@@ -233,7 +244,8 @@ class AnnotationController extends ControllerBase {
       // Use the resolver's canonical framework name (normalizes 'blade' → 'twig').
       $enriched = $this->sourceResolver->resolve($fw, $comp);
       $data['framework'] = [
-        'framework'   => $enriched['framework'],  // canonical: always 'twig' for supported
+      // canonical: always 'twig' for supported.
+        'framework'   => $enriched['framework'],
         'component'   => $comp,
         'source_file' => $enriched['source_file'],
         'source_line' => $enriched['source_line'],
@@ -257,6 +269,9 @@ class AnnotationController extends ControllerBase {
     }
   }
 
+  /**
+   * Updates an existing annotation by ID.
+   */
   public function update(Request $request, string $id): JsonResponse {
     if (!$this->config('instruckt_drupal.settings')->get('enabled')) {
       return $this->disabledResponse();
@@ -310,7 +325,7 @@ class AnnotationController extends ControllerBase {
         // DateTimeImmutable constructor accepts relative strings like "next tuesday",
         // so we first enforce the structural shape with a regex before trusting the parse.
         // Accepted forms: "2024-03-11T12:34:56Z", "2024-03-11T12:34:56.789Z",
-        //                 "2024-03-11T12:34:56+05:30", "2024-03-11T12:34:56.789-07:00".
+        // "2024-03-11T12:34:56+05:30", "2024-03-11T12:34:56.789-07:00".
         if (!is_string($entry['timestamp'])) {
           return new JsonResponse(['error' => 'Thread entry timestamp must be an ISO-8601 date-time string'], 400);
         }
@@ -319,7 +334,8 @@ class AnnotationController extends ControllerBase {
         }
         try {
           new \DateTimeImmutable($entry['timestamp']);
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
           return new JsonResponse(['error' => 'Thread entry timestamp must be an ISO-8601 date-time string'], 400);
         }
       }
@@ -341,6 +357,9 @@ class AnnotationController extends ControllerBase {
     return new JsonResponse($annotation, 200, ['Cache-Control' => 'no-store']);
   }
 
+  /**
+   * Resolves a framework component to its template source file.
+   */
   public function resolveSource(Request $request): JsonResponse {
     if (!$this->config('instruckt_drupal.settings')->get('enabled')) {
       return $this->disabledResponse();
@@ -376,6 +395,9 @@ class AnnotationController extends ControllerBase {
     );
   }
 
+  /**
+   * Serves a screenshot file by filename.
+   */
   public function serveScreenshot(string $filename): Response {
     if (!$this->config('instruckt_drupal.settings')->get('enabled')) {
       return $this->disabledResponse();
@@ -402,4 +424,5 @@ class AnnotationController extends ControllerBase {
       'Content-Security-Policy'   => "default-src 'none'",
     ]);
   }
+
 }

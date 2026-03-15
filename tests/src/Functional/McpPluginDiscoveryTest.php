@@ -13,9 +13,23 @@ use Drupal\Tests\BrowserTestBase;
  */
 class McpPluginDiscoveryTest extends BrowserTestBase {
 
+  /**
+   * Modules to enable.
+   *
+   * @var array
+   */
   protected static $modules = ['instruckt_drupal'];
+
+  /**
+   * Default theme.
+   *
+   * @var string
+   */
   protected $defaultTheme = 'stark';
 
+  /**
+   * {@inheritdoc}
+   */
   protected function prepareSettings(): void {
     parent::prepareSettings();
     $settings['settings']['file_private_path'] = (object) [

@@ -16,6 +16,9 @@ use Drupal\Tests\UnitTestCase;
  */
 class SourceResolverTest extends UnitTestCase {
 
+  /**
+   * Builds a SourceResolver with mocked dependencies.
+   */
   private function buildResolver(array $themeRegistryData = []): SourceResolver {
     $activeTheme = $this->createMock(ActiveTheme::class);
     $activeTheme->method('getName')->willReturn('mytheme');

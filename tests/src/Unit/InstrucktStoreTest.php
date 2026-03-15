@@ -15,9 +15,23 @@ use Drupal\Tests\UnitTestCase;
  */
 class InstrucktStoreTest extends UnitTestCase {
 
+  /**
+   * The InstrucktStore instance under test.
+   *
+   * @var \Drupal\instruckt_drupal\Service\InstrucktStore
+   */
   private InstrucktStore $store;
+
+  /**
+   * Temporary directory used as the storage path.
+   *
+   * @var string
+   */
   private string $tempDir;
 
+  /**
+   * {@inheritdoc}
+   */
   protected function setUp(): void {
     parent::setUp();
     $this->tempDir = sys_get_temp_dir() . '/instruckt_test_' . uniqid();
@@ -58,6 +72,9 @@ class InstrucktStoreTest extends UnitTestCase {
     $this->store = new InstrucktStore($configFactory, $fileSystem, $logger);
   }
 
+  /**
+   * {@inheritdoc}
+   */
   protected function tearDown(): void {
     parent::tearDown();
     if (is_dir($this->tempDir)) {
@@ -76,7 +93,11 @@ class InstrucktStoreTest extends UnitTestCase {
    */
   public function testUlidFormatIsValidCrockfordBase32(): void {
     $annotation = $this->store->createAnnotation([
-      'x' => 10, 'y' => 20, 'comment' => 'Test', 'element' => '.foo', 'url' => 'http://example.com',
+      'x' => 10,
+      'y' => 20,
+      'comment' => 'Test',
+      'element' => '.foo',
+      'url' => 'http://example.com',
     ]);
     $this->assertNotNull($annotation);
     $this->assertMatchesRegularExpression('/^[0-9A-HJKMNP-TV-Z]{26}$/', $annotation['id']);
@@ -87,8 +108,13 @@ class InstrucktStoreTest extends UnitTestCase {
    */
   public function testCreateAnnotationReturnsCorrectShape(): void {
     $annotation = $this->store->createAnnotation([
-      'x' => 10.5, 'y' => 20.5, 'comment' => 'Hello', 'element' => '.btn',
-      'url' => 'http://example.com', 'intent' => 'fix', 'severity' => 'important',
+      'x' => 10.5,
+      'y' => 20.5,
+      'comment' => 'Hello',
+      'element' => '.btn',
+      'url' => 'http://example.com',
+      'intent' => 'fix',
+      'severity' => 'important',
       'created_by' => 'Test User',
     ]);
     $this->assertNotNull($annotation);
@@ -119,8 +145,20 @@ class InstrucktStoreTest extends UnitTestCase {
    * @covers ::getAnnotations
    */
   public function testAnnotationsArePersistedInInsertionOrder(): void {
-    $this->store->createAnnotation(['x' => 1, 'y' => 1, 'comment' => 'First', 'element' => '.a', 'url' => 'http://example.com']);
-    $this->store->createAnnotation(['x' => 2, 'y' => 2, 'comment' => 'Second', 'element' => '.b', 'url' => 'http://example.com']);
+    $this->store->createAnnotation([
+      'x' => 1,
+      'y' => 1,
+      'comment' => 'First',
+      'element' => '.a',
+      'url' => 'http://example.com',
+    ]);
+    $this->store->createAnnotation([
+      'x' => 2,
+      'y' => 2,
+      'comment' => 'Second',
+      'element' => '.b',
+      'url' => 'http://example.com',
+    ]);
     $all = $this->store->getAnnotations();
     $this->assertCount(2, $all);
     $this->assertSame('First', $all[0]['comment']);
@@ -132,7 +170,11 @@ class InstrucktStoreTest extends UnitTestCase {
    */
   public function testUpdateAnnotationSetsResolutionMetadata(): void {
     $annotation = $this->store->createAnnotation([
-      'x' => 1, 'y' => 1, 'comment' => 'Fix me', 'element' => '.x', 'url' => 'http://example.com',
+      'x' => 1,
+      'y' => 1,
+      'comment' => 'Fix me',
+      'element' => '.x',
+      'url' => 'http://example.com',
     ]);
     $updated = $this->store->updateAnnotation($annotation['id'], ['status' => 'resolved']);
     $this->assertIsArray($updated);
@@ -146,7 +188,11 @@ class InstrucktStoreTest extends UnitTestCase {
    */
   public function testUpdateAnnotationWithAgentResolvedBy(): void {
     $annotation = $this->store->createAnnotation([
-      'x' => 1, 'y' => 1, 'comment' => 'Agent fix', 'element' => '.x', 'url' => 'http://example.com',
+      'x' => 1,
+      'y' => 1,
+      'comment' => 'Agent fix',
+      'element' => '.x',
+      'url' => 'http://example.com',
     ]);
     $updated = $this->store->updateAnnotation($annotation['id'], ['status' => 'resolved'], 'agent');
     $this->assertIsArray($updated);
@@ -158,7 +204,11 @@ class InstrucktStoreTest extends UnitTestCase {
    */
   public function testUpdateAnnotationClearsResolutionOnReopen(): void {
     $annotation = $this->store->createAnnotation([
-      'x' => 1, 'y' => 1, 'comment' => 'Fix', 'element' => '.x', 'url' => 'http://example.com',
+      'x' => 1,
+      'y' => 1,
+      'comment' => 'Fix',
+      'element' => '.x',
+      'url' => 'http://example.com',
     ]);
     $this->store->updateAnnotation($annotation['id'], ['status' => 'resolved']);
     $updated = $this->store->updateAnnotation($annotation['id'], ['status' => 'pending']);
@@ -223,7 +273,8 @@ class InstrucktStoreTest extends UnitTestCase {
    */
   public function testDeleteScreenshotWithNullPathDoesNotError(): void {
     $this->store->deleteScreenshot(NULL);
-    $this->assertTrue(TRUE); // Assert no exception thrown.
+    // Assert no exception thrown.
+    $this->assertTrue(TRUE);
   }
 
   /**
@@ -231,7 +282,8 @@ class InstrucktStoreTest extends UnitTestCase {
    */
   public function testDeleteScreenshotWithMissingPathDoesNotError(): void {
     $this->store->deleteScreenshot('screenshots/missing.png');
-    $this->assertTrue(TRUE); // Assert no exception thrown.
+    // Assert no exception thrown.
+    $this->assertTrue(TRUE);
   }
 
   /**
@@ -239,10 +291,18 @@ class InstrucktStoreTest extends UnitTestCase {
    */
   public function testGetPendingAnnotationsFiltersResolved(): void {
     $a1 = $this->store->createAnnotation([
-      'x' => 1, 'y' => 1, 'comment' => 'Keep', 'element' => '.a', 'url' => 'http://example.com',
+      'x' => 1,
+      'y' => 1,
+      'comment' => 'Keep',
+      'element' => '.a',
+      'url' => 'http://example.com',
     ]);
     $a2 = $this->store->createAnnotation([
-      'x' => 2, 'y' => 2, 'comment' => 'Resolve', 'element' => '.b', 'url' => 'http://example.com',
+      'x' => 2,
+      'y' => 2,
+      'comment' => 'Resolve',
+      'element' => '.b',
+      'url' => 'http://example.com',
     ]);
     $this->store->updateAnnotation($a2['id'], ['status' => 'resolved']);
     $pending = $this->store->getPendingAnnotations();
@@ -272,10 +332,18 @@ class InstrucktStoreTest extends UnitTestCase {
    */
   public function testGetPendingAnnotationsReIndexesKeysAfterFirstResolved(): void {
     $a1 = $this->store->createAnnotation([
-      'x' => 1, 'y' => 1, 'comment' => 'First', 'element' => '.a', 'url' => 'http://example.com',
+      'x' => 1,
+      'y' => 1,
+      'comment' => 'First',
+      'element' => '.a',
+      'url' => 'http://example.com',
     ]);
     $a2 = $this->store->createAnnotation([
-      'x' => 2, 'y' => 2, 'comment' => 'Second', 'element' => '.b', 'url' => 'http://example.com',
+      'x' => 2,
+      'y' => 2,
+      'comment' => 'Second',
+      'element' => '.b',
+      'url' => 'http://example.com',
     ]);
     $this->store->updateAnnotation($a1['id'], ['status' => 'resolved']);
     $pending = $this->store->getPendingAnnotations();
@@ -334,7 +402,9 @@ class InstrucktStoreTest extends UnitTestCase {
     $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI6QAAAABJRU5ErkJggg==');
     $dataUrl = 'data:image/png;base64,' . base64_encode($png);
     $annotation = $this->store->createAnnotation([
-      'comment' => 'Shot', 'element' => '.x', 'url' => 'http://example.com',
+      'comment' => 'Shot',
+      'element' => '.x',
+      'url' => 'http://example.com',
       'screenshot' => $dataUrl,
     ]);
     $this->assertNotNull($annotation);
@@ -374,6 +444,9 @@ class InstrucktStoreTest extends UnitTestCase {
     $this->assertNotNull($store->saveScreenshot('01AAAAAAAAAAAAAAAAAAAAAAAAC', $dataUrl));
   }
 
+  /**
+   * Tests that SVG screenshots are allowed by default configuration.
+   */
   public function testSaveScreenshotUsesDefaultAllowedExtensionsForSvg(): void {
     $store = $this->makeStore(['allowed_screenshot_extensions' => NULL]);
     mkdir($this->tempDir . '/screenshots', 0755, TRUE);
@@ -407,7 +480,8 @@ class InstrucktStoreTest extends UnitTestCase {
     // URL-encoded SVG: rawData after split is '<svg>' = 5 bytes.
     $store = $this->makeStore(['max_screenshot_size' => 5]);
     $relPath = $store->saveScreenshot('01AAAAAAAAAAAAAAAAAAAAAAAAE', 'data:image/svg+xml,<svg>');
-    $this->assertNotNull($relPath); // 5 > 5 is false → allowed; 5 >= 5 would reject
+    // 5 > 5 is false → allowed; 5 >= 5 would reject
+    $this->assertNotNull($relPath);
   }
 
   /**
@@ -428,7 +502,7 @@ class InstrucktStoreTest extends UnitTestCase {
   /**
    * Kills mutants #26-30: Concat / ConcatOperandRemoval / LogicalNot on lines 426-427.
    *
-   * getScreenshotRealPath must return the real path when the file exists.
+   * GetScreenshotRealPath must return the real path when the file exists.
    * URI corruption mutations cause file_exists to return false → returns NULL.
    * LogicalNot inverts the condition, returning NULL for existing files.
    */
@@ -444,7 +518,7 @@ class InstrucktStoreTest extends UnitTestCase {
   /**
    * Kills mutants #31-35: Concat / ConcatOperandRemoval / IfNegation on lines 437-438.
    *
-   * deleteScreenshot must delete the file at the correct path. URI mutations
+   * DeleteScreenshot must delete the file at the correct path. URI mutations
    * compute wrong paths so file_exists returns false → file is not deleted.
    * IfNegation inverts the condition, skipping deletion for existing files.
    */

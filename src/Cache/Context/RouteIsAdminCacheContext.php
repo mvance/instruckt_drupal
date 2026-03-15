@@ -16,14 +16,23 @@ class RouteIsAdminCacheContext implements CacheContextInterface {
 
   public function __construct(private readonly AdminContext $adminContext) {}
 
+  /**
+   * {@inheritdoc}
+   */
   public static function getLabel() {
     return t('Is admin route');
   }
 
+  /**
+   * {@inheritdoc}
+   */
   public function getContext(): string {
     return $this->adminContext->isAdminRoute() ? '1' : '0';
   }
 
+  /**
+   * {@inheritdoc}
+   */
   public function getCacheableMetadata(): CacheableMetadata {
     return new CacheableMetadata();
   }

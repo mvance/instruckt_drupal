@@ -32,10 +32,13 @@ class SourceResolver {
   /**
    * Resolves a framework component to its source file.
    *
-   * @param string $framework  e.g. 'twig', 'blade', 'livewire', 'vue'
-   * @param string $component  Twig template machine name, e.g. 'node--article--teaser'
+   * @param string $framework
+   *   Framework identifier, e.g. 'twig', 'blade', 'livewire', 'vue'.
+   * @param string $component
+   *   Twig template machine name, e.g. 'node--article--teaser'.
    *
    * @return array{framework: string, component: string, source_file: string|null, supported: bool}
+   *   Resolved source information including canonical framework name and file path.
    */
   public function resolve(string $framework, string $component): array {
     if (!in_array($framework, self::TWIG_FRAMEWORKS, TRUE)) {
@@ -59,11 +62,15 @@ class SourceResolver {
       'framework'   => $canonicalFramework,
       'component'   => $component,
       'source_file' => $this->findTwigTemplate($component),
-      'source_line' => NULL,  // Line resolution requires static analysis; not implemented.
+    // Line resolution requires static analysis; not implemented.
+      'source_line' => NULL,
       'supported'   => TRUE,
     ];
   }
 
+  /**
+   * Searches for a Twig template file by machine name.
+   */
   private function findTwigTemplate(string $templateName): ?string {
     // Normalize: Drupal template filenames use hyphens; dots may appear in
     // the component name sent by the JS.
@@ -116,6 +123,9 @@ class SourceResolver {
     return NULL;
   }
 
+  /**
+   * Returns the path relative to the application root.
+   */
   private function relativePath(string $absolutePath): string {
     // Use $this->appRoot (injected) rather than \Drupal::root() (static).
     $root = rtrim($this->appRoot, '/') . '/';
@@ -123,4 +133,5 @@ class SourceResolver {
       ? substr($absolutePath, strlen($root))
       : $absolutePath;
   }
+
 }

@@ -2,6 +2,7 @@
 
 namespace Drupal\Tests\instruckt_drupal\Functional;
 
+use Symfony\Component\BrowserKit\AbstractBrowser;
 use Drupal\Tests\BrowserTestBase;
 
 /**
@@ -11,9 +12,23 @@ use Drupal\Tests\BrowserTestBase;
  */
 class ScreenshotTest extends BrowserTestBase {
 
+  /**
+   * Modules to enable.
+   *
+   * @var array
+   */
   protected static $modules = ['instruckt_drupal'];
+
+  /**
+   * Default theme.
+   *
+   * @var string
+   */
   protected $defaultTheme = 'stark';
 
+  /**
+   * {@inheritdoc}
+   */
   protected function prepareSettings(): void {
     parent::prepareSettings();
     $settings['settings']['file_private_path'] = (object) [
@@ -23,10 +38,16 @@ class ScreenshotTest extends BrowserTestBase {
     $this->writeSettings($settings);
   }
 
-  private function getBrowserKitClient(): \Symfony\Component\BrowserKit\AbstractBrowser {
+  /**
+   * Returns the BrowserKit client for direct HTTP requests.
+   */
+  private function getBrowserKitClient(): AbstractBrowser {
     return $this->getSession()->getDriver()->getClient();
   }
 
+  /**
+   * Performs a JSON API request and returns the decoded response.
+   */
   private function jsonRequest(string $method, string $path, array $data = [], string $xsrfToken = ''): array {
     $server = ['CONTENT_TYPE' => 'application/json', 'HTTP_ACCEPT' => 'application/json'];
     if ($xsrfToken !== '') {
@@ -45,6 +66,9 @@ class ScreenshotTest extends BrowserTestBase {
     ];
   }
 
+  /**
+   * Returns the XSRF-TOKEN cookie value after making a GET request.
+   */
   private function getXsrfToken(): string {
     $this->drupalGet('/instruckt/annotations');
     $jar = $this->getBrowserKitClient()->getCookieJar();
@@ -69,7 +93,10 @@ class ScreenshotTest extends BrowserTestBase {
     $pngB64 = base64_encode($png);
 
     $result = $this->jsonRequest('POST', '/instruckt/annotations', [
-      'x' => 10, 'y' => 20, 'comment' => 'With screenshot', 'element' => '.img',
+      'x' => 10,
+      'y' => 20,
+      'comment' => 'With screenshot',
+      'element' => '.img',
       'url' => 'http://example.com',
       'screenshot' => 'data:image/png;base64,' . $pngB64,
     ], $token);
@@ -91,7 +118,10 @@ class ScreenshotTest extends BrowserTestBase {
     $svgB64 = base64_encode($svg);
 
     $result = $this->jsonRequest('POST', '/instruckt/annotations', [
-      'x' => 5, 'y' => 5, 'comment' => 'SVG screenshot', 'element' => '.el',
+      'x' => 5,
+      'y' => 5,
+      'comment' => 'SVG screenshot',
+      'element' => '.el',
       'url' => 'http://example.com',
       'screenshot' => 'data:image/svg+xml;base64,' . $svgB64,
     ], $token);
@@ -110,7 +140,10 @@ class ScreenshotTest extends BrowserTestBase {
     $token = $this->getXsrfToken();
 
     $result = $this->jsonRequest('POST', '/instruckt/annotations', [
-      'x' => 5, 'y' => 5, 'comment' => 'Bad screenshot', 'element' => '.el',
+      'x' => 5,
+      'y' => 5,
+      'comment' => 'Bad screenshot',
+      'element' => '.el',
       'url' => 'http://example.com',
       'screenshot' => 'data:image/gif;base64,' . base64_encode('GIF89a'),
     ], $token);
@@ -129,7 +162,10 @@ class ScreenshotTest extends BrowserTestBase {
     // Create annotation with screenshot.
     $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI6QAAAABJRU5ErkJggg==');
     $result = $this->jsonRequest('POST', '/instruckt/annotations', [
-      'x' => 10, 'y' => 10, 'comment' => 'Screenshot to serve', 'element' => '.x',
+      'x' => 10,
+      'y' => 10,
+      'comment' => 'Screenshot to serve',
+      'element' => '.x',
       'url' => 'http://example.com',
       'screenshot' => 'data:image/png;base64,' . base64_encode($png),
     ], $token);

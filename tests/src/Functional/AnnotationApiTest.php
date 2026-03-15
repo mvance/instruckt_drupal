@@ -2,6 +2,7 @@
 
 namespace Drupal\Tests\instruckt_drupal\Functional;
 
+use Symfony\Component\BrowserKit\AbstractBrowser;
 use Drupal\Tests\BrowserTestBase;
 
 /**
@@ -11,9 +12,23 @@ use Drupal\Tests\BrowserTestBase;
  */
 class AnnotationApiTest extends BrowserTestBase {
 
+  /**
+   * Modules to enable.
+   *
+   * @var array
+   */
   protected static $modules = ['instruckt_drupal'];
+
+  /**
+   * Default theme.
+   *
+   * @var string
+   */
   protected $defaultTheme = 'stark';
 
+  /**
+   * {@inheritdoc}
+   */
   protected function prepareSettings(): void {
     parent::prepareSettings();
     $settings['settings']['file_private_path'] = (object) [
@@ -26,7 +41,7 @@ class AnnotationApiTest extends BrowserTestBase {
   /**
    * Returns the BrowserKit client from the current Mink session.
    */
-  private function getBrowserKitClient(): \Symfony\Component\BrowserKit\AbstractBrowser {
+  private function getBrowserKitClient(): AbstractBrowser {
     return $this->getSession()->getDriver()->getClient();
   }
 
@@ -99,7 +114,8 @@ class AnnotationApiTest extends BrowserTestBase {
     $this->assertSame(201, $result['status']);
     $this->assertArrayHasKey('id', $result['body']);
     $this->assertSame('pending', $result['body']['status']);
-    $this->assertEquals(100.0, $result['body']['x']); // JSON decode gives int 100, not float 100.0
+    // JSON decode gives int 100, not float 100.0.
+    $this->assertEquals(100.0, $result['body']['x']);
     $this->assertSame('This button is misaligned', $result['body']['comment']);
     $this->assertMatchesRegularExpression('/^[0-9A-HJKMNP-TV-Z]{26}$/', $result['body']['id']);
     $this->assertArrayHasKey('created_by', $result['body']);
@@ -114,8 +130,13 @@ class AnnotationApiTest extends BrowserTestBase {
     $this->drupalLogin($user);
 
     $result = $this->jsonRequest('POST', '/instruckt/annotations', [
-      'x' => 10, 'y' => 20, 'comment' => 'Test', 'element' => '.a', 'url' => 'http://example.com',
-    ]); // No XSRF token.
+      'x' => 10,
+      'y' => 20,
+      'comment' => 'Test',
+      'element' => '.a',
+      'url' => 'http://example.com',
+    // No XSRF token.
+    ]);
 
     $this->assertSame(403, $result['status']);
   }
@@ -146,8 +167,12 @@ class AnnotationApiTest extends BrowserTestBase {
     $token = $this->getXsrfToken();
 
     $result = $this->jsonRequest('POST', '/instruckt/annotations', [
-      'x' => 10, 'y' => 20, 'comment' => 'Test', 'element' => '.a',
-      'url' => 'http://example.com', 'intent' => 'invalid_intent',
+      'x' => 10,
+      'y' => 20,
+      'comment' => 'Test',
+      'element' => '.a',
+      'url' => 'http://example.com',
+      'intent' => 'invalid_intent',
     ], $token);
 
     $this->assertSame(400, $result['status']);
@@ -163,7 +188,10 @@ class AnnotationApiTest extends BrowserTestBase {
 
     // Create an annotation first.
     $created = $this->jsonRequest('POST', '/instruckt/annotations', [
-      'x' => 50, 'y' => 60, 'comment' => 'Resolve me', 'element' => '.x',
+      'x' => 50,
+      'y' => 60,
+      'comment' => 'Resolve me',
+      'element' => '.x',
       'url' => 'http://example.com',
     ], $token);
     $this->assertSame(201, $created['status']);
@@ -205,7 +233,10 @@ class AnnotationApiTest extends BrowserTestBase {
     $token = $this->getXsrfToken();
 
     $this->jsonRequest('POST', '/instruckt/annotations', [
-      'x' => 1, 'y' => 2, 'comment' => 'Created', 'element' => '.el',
+      'x' => 1,
+      'y' => 2,
+      'comment' => 'Created',
+      'element' => '.el',
       'url' => 'http://example.com',
     ], $token);
 

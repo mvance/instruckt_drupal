@@ -42,6 +42,9 @@ class InstrucktPlugin extends McpPluginBase {
     $this->currentUser = $currentUser;
   }
 
+  /**
+   * {@inheritdoc}
+   */
   public static function create(
     ContainerInterface $container,
     array $configuration,
@@ -58,10 +61,16 @@ class InstrucktPlugin extends McpPluginBase {
     );
   }
 
+  /**
+   * {@inheritdoc}
+   */
   public function checkRequirements(): bool {
     return TRUE;
   }
 
+  /**
+   * {@inheritdoc}
+   */
   public function getRequirementsDescription(): string {
     return '';
   }
@@ -138,16 +147,39 @@ class InstrucktPlugin extends McpPluginBase {
     };
   }
 
-  public function getResources(): array { return []; }
-  public function getResourceTemplates(): array { return []; }
-  public function readResource(string $resourceId): array { return []; }
+  /**
+   * {@inheritdoc}
+   */
+  public function getResources(): array {
+    return [];
+  }
 
+  /**
+   * {@inheritdoc}
+   */
+  public function getResourceTemplates(): array {
+    return [];
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function readResource(string $resourceId): array {
+    return [];
+  }
+
+  /**
+   * Returns all pending annotations as MCP content.
+   */
   private function getAllPending(): array {
     $pending = $this->store->getPendingAnnotations();
     $count = count($pending);
     return [['type' => 'text', 'text' => \json_encode(['annotations' => $pending, 'count' => $count])]];
   }
 
+  /**
+   * Returns the base64-encoded screenshot for the given annotation ID.
+   */
   private function getScreenshot(array $arguments): array {
     $annotationId = $arguments['annotation_id'] ?? '';
     if ($annotationId === '') {
@@ -202,9 +234,13 @@ class InstrucktPlugin extends McpPluginBase {
       'type'      => 'image',
       'data'      => base64_encode($binary),
       'mimeType'  => $mimeType,
-    ]];
+    ],
+    ];
   }
 
+  /**
+   * Resolves the annotation with the given ID.
+   */
   private function resolve(array $arguments): array {
     $id = $arguments['id'] ?? '';
     if ($id === '') {
@@ -228,4 +264,5 @@ class InstrucktPlugin extends McpPluginBase {
 
     return [['type' => 'text', 'text' => \json_encode($annotation)]];
   }
+
 }

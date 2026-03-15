@@ -2,6 +2,7 @@
 
 namespace Drupal\Tests\instruckt_drupal\Functional;
 
+use Symfony\Component\BrowserKit\AbstractBrowser;
 use Drupal\Tests\BrowserTestBase;
 
 /**
@@ -11,9 +12,23 @@ use Drupal\Tests\BrowserTestBase;
  */
 class AdminAnnotationListTest extends BrowserTestBase {
 
+  /**
+   * Modules to enable.
+   *
+   * @var array
+   */
   protected static $modules = ['instruckt_drupal'];
+
+  /**
+   * Default theme.
+   *
+   * @var string
+   */
   protected $defaultTheme = 'stark';
 
+  /**
+   * {@inheritdoc}
+   */
   protected function prepareSettings(): void {
     parent::prepareSettings();
     $settings['settings']['file_private_path'] = (object) [
@@ -26,7 +41,7 @@ class AdminAnnotationListTest extends BrowserTestBase {
   /**
    * Returns the BrowserKit client from the current Mink session.
    */
-  private function getBrowserKitClient(): \Symfony\Component\BrowserKit\AbstractBrowser {
+  private function getBrowserKitClient(): AbstractBrowser {
     return $this->getSession()->getDriver()->getClient();
   }
 
@@ -132,7 +147,8 @@ class AdminAnnotationListTest extends BrowserTestBase {
     $this->assertNotEmpty($token);
 
     $this->jsonRequest('POST', '/instruckt/annotations', [
-      'x' => 10, 'y' => 20,
+      'x' => 10,
+      'y' => 20,
       'comment' => 'Admin list test comment',
       'element' => '.foo',
       'url' => 'http://example.com/page',
@@ -157,7 +173,8 @@ class AdminAnnotationListTest extends BrowserTestBase {
     $token = $this->getXsrfToken();
 
     $response = $this->jsonRequest('POST', '/instruckt/annotations', [
-      'x' => 5, 'y' => 5,
+      'x' => 5,
+      'y' => 5,
       'comment' => 'Detail link test',
       'element' => '.bar',
       'url' => 'http://example.com/detail-link',
@@ -186,14 +203,16 @@ class AdminAnnotationListTest extends BrowserTestBase {
     $token = $this->getXsrfToken();
 
     $this->jsonRequest('POST', '/instruckt/annotations', [
-      'x' => 1, 'y' => 1,
+      'x' => 1,
+      'y' => 1,
       'comment' => 'Pending annotation',
       'element' => '.a',
       'url' => 'http://example.com/a',
     ], $token);
 
     $responseB = $this->jsonRequest('POST', '/instruckt/annotations', [
-      'x' => 2, 'y' => 2,
+      'x' => 2,
+      'y' => 2,
       'comment' => 'Resolved annotation',
       'element' => '.b',
       'url' => 'http://example.com/b',
@@ -226,7 +245,8 @@ class AdminAnnotationListTest extends BrowserTestBase {
     $token = $this->getXsrfToken();
 
     $response = $this->jsonRequest('POST', '/instruckt/annotations', [
-      'x' => 3, 'y' => 3,
+      'x' => 3,
+      'y' => 3,
       'comment' => 'Detail page comment',
       'element' => '.detail',
       'url' => 'http://example.com/detail',

@@ -11,9 +11,23 @@ use Drupal\Tests\BrowserTestBase;
  */
 class SettingsFormTest extends BrowserTestBase {
 
+  /**
+   * Modules to enable.
+   *
+   * @var array
+   */
   protected static $modules = ['instruckt_drupal'];
+
+  /**
+   * Default theme.
+   *
+   * @var string
+   */
   protected $defaultTheme = 'stark';
 
+  /**
+   * {@inheritdoc}
+   */
   protected function prepareSettings(): void {
     parent::prepareSettings();
     $settings['settings']['file_private_path'] = (object) [
@@ -60,7 +74,7 @@ class SettingsFormTest extends BrowserTestBase {
     $this->drupalGet('/admin/config/development/instruckt');
     $this->assertSession()->statusCodeEquals(200);
 
-    // enabled checkbox should be checked.
+    // Enabled checkbox should be checked.
     $this->assertSession()->checkboxChecked('enabled');
 
     // storage_path default.

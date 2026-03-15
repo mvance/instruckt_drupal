@@ -22,8 +22,16 @@ use Symfony\Component\HttpKernel\HttpKernelInterface;
  */
 class InstrucktCsrfSubscriberTest extends KernelTestBase {
 
+  /**
+   * Modules to enable.
+   *
+   * @var array
+   */
   protected static $modules = [];
 
+  /**
+   * Builds the subscriber with mocked dependencies.
+   */
   private function buildSubscriber(bool $hasPermission, bool $moduleEnabled, string $existingCookie = ''): array {
     $currentUser = $this->createMock(AccountProxyInterface::class);
     $currentUser->method('hasPermission')
@@ -100,7 +108,7 @@ class InstrucktCsrfSubscriberTest extends KernelTestBase {
     $subscriber->onResponse($event);
     $cookies = $response->headers->getCookies();
     $this->assertNotEmpty($cookies);
-    $tokenCookie = null;
+    $tokenCookie = NULL;
     foreach ($cookies as $cookie) {
       if ($cookie->getName() === 'XSRF-TOKEN') {
         $tokenCookie = $cookie;
