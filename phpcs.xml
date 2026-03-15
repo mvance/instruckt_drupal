@@ -8,7 +8,7 @@
   <rule ref="Drupal"/>
   <rule ref="DrupalPractice"/>
 
-  <config name="php_version" value="80300"/>
+  <config name="php_version" value="80100"/>
 
   <arg value="sp"/>
   <arg name="colors"/>
