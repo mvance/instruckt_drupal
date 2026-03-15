@@ -57,6 +57,15 @@ instruckt_drupal.admin.annotation.view:
   requirements:
     _permission: 'administer instruckt_drupal'
 
+instruckt_drupal.admin.annotation.screenshot:
+  path: '/admin/content/instruckt/{id}/screenshot'
+  defaults:
+    _controller: '\Drupal\instruckt_drupal\Controller\AdminAnnotationListController::viewScreenshot'
+    _title: 'Screenshot'
+  methods: [GET]
+  requirements:
+    _permission: 'administer instruckt_drupal'
+
 instruckt_drupal.admin_settings:
   path: '/admin/config/development/instruckt'
   defaults:

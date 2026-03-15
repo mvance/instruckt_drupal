@@ -8,7 +8,9 @@ use Drupal\Core\Url;
 use Drupal\Core\Utility\TableSort;
 use Drupal\instruckt_drupal\Service\InstrucktStore;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
@@ -41,6 +43,7 @@ class AdminAnnotationListController extends ControllerBase {
       'comment'    => ['data' => $this->t('Comment'), 'specifier' => 'comment', 'field' => 'comment'],
       'status'     => ['data' => $this->t('Status'), 'specifier' => 'status', 'field' => 'status'],
       'created_at' => ['data' => $this->t('Created'), 'specifier' => 'created_at', 'field' => 'created_at'],
+      'screenshot' => ['data' => $this->t('Screenshot')],
     ];
 
     $request = $this->requestStack->getCurrentRequest();
@@ -66,12 +69,23 @@ class AdminAnnotationListController extends ControllerBase {
         ? Link::fromTextAndUrl($url, Url::fromUri($url, ['attributes' => ['target' => '_blank']]))->toRenderable()
         : ['#plain_text' => ''];
 
+      $screenshotRel = $annotation['screenshot'] ?? '';
+      $screenshotCell = $screenshotRel
+        ? Link::createFromRoute(
+            $this->t('View'),
+            'instruckt_drupal.admin.annotation.screenshot',
+            ['id' => $id],
+            ['attributes' => ['target' => '_blank']]
+          )->toRenderable()
+        : ['#plain_text' => '—'];
+
       $rows[] = [
         ['data' => $idCell],
         ['data' => $urlCell],
         $annotation['comment'] ?? '',
         $annotation['status'] ?? '',
         $annotation['created_at'] ?? '',
+        ['data' => $screenshotCell],
       ];
     }
 
@@ -107,11 +121,64 @@ class AdminAnnotationListController extends ControllerBase {
       $rows[]  = [['data' => $key, 'header' => TRUE], $display];
     }
 
+    $screenshotRel = $annotation['screenshot'] ?? '';
+    if ($screenshotRel !== '') {
+      $screenshotUrl = Url::fromRoute(
+        'instruckt_drupal.admin.annotation.screenshot',
+        ['id' => $id]
+      )->toString();
+      $rows[] = [
+        ['data' => 'screenshot_preview', 'header' => TRUE],
+        [
+          'data' => [
+            '#markup' => '<img src="' . htmlspecialchars($screenshotUrl, ENT_QUOTES, 'UTF-8')
+            . '" style="max-width:100%;height:auto;" alt="Screenshot" />',
+          ],
+        ],
+      ];
+    }
+
     return [
       '#type'  => 'table',
       '#rows'  => $rows,
       '#empty' => $this->t('No data.'),
     ];
+  }
+
+  /**
+   * Serves the screenshot for a single annotation (admin-permissioned).
+   */
+  public function viewScreenshot(string $id): Response {
+    $annotations = $this->store->getAnnotations();
+    $annotation  = NULL;
+    foreach ($annotations as $a) {
+      if (($a['id'] ?? '') === $id) {
+        $annotation = $a;
+        break;
+      }
+    }
+
+    if ($annotation === NULL) {
+      throw new NotFoundHttpException();
+    }
+
+    $relPath = $annotation['screenshot'] ?? '';
+    if ($relPath === '') {
+      throw new NotFoundHttpException();
+    }
+
+    $realPath = $this->store->getScreenshotRealPath($relPath);
+    if (!$realPath) {
+      throw new NotFoundHttpException();
+    }
+
+    $filename    = basename($relPath);
+    $contentType = str_ends_with($filename, '.svg') ? 'image/svg+xml' : 'image/png';
+    return new BinaryFileResponse($realPath, 200, [
+      'Content-Type'           => $contentType,
+      'Cache-Control'          => 'private, max-age=3600',
+      'X-Content-Type-Options' => 'nosniff',
+    ]);
   }
 
 }
