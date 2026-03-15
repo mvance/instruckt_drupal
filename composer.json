@@ -12,6 +12,10 @@
   "repositories": [
     {
       "type": "composer",
+      "url": "https://packages.drupal.org/8"
+    },
+    {
+      "type": "composer",
       "url": "https://asset-packagist.org"
     }
   ],
@@ -19,6 +23,9 @@
     "drupal/mcp": "^1.2",
     "npm-asset/instruckt": "^0.4",
     "oomphinc/composer-installers-extender": "^2.0"
+  },
+  "require-dev": {
+    "drush/drush": "^13"
   },
   "extra": {
     "installer-types": ["npm-asset", "bower-asset"],
@@ -29,6 +36,17 @@
       "services": {
         "drush.services.yml": ">=9"
       }
+    }
+  },
+  "config": {
+    "allow-plugins": {
+      "oomphinc/composer-installers-extender": true,
+      "composer/installers": true,
+      "drupal/core-composer-scaffold": true,
+      "drupal/core-project-message": true,
+      "dealerdirect/phpcodesniffer-composer-installer": true,
+      "phpstan/extension-installer": true,
+      "cweagans/composer-patches": true
     }
   }
 }
