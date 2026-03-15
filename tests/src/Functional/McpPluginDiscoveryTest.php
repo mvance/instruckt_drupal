@@ -47,7 +47,7 @@ class McpPluginDiscoveryTest extends BrowserTestBase {
 
     $manager = $container->get($managerServiceId);
     $definitions = $manager->getDefinitions();
-    $this->assertArrayHasKey('instruckt_drupal', $definitions);
+    $this->assertArrayHasKey('instruckt-drupal', $definitions);
   }
 
   /**
@@ -62,8 +62,8 @@ class McpPluginDiscoveryTest extends BrowserTestBase {
 
     $plugin = new InstrucktPlugin(
       [],
-      'instruckt_drupal',
-      ['id' => 'instruckt_drupal', 'label' => 'Instruckt Drupal', 'description' => ''],
+      'instruckt-drupal',
+      ['id' => 'instruckt-drupal', 'label' => 'Instruckt Drupal', 'description' => ''],
       $currentUser,
       $store,
       $configFactory,

@@ -21,7 +21,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  *   - instruckt_resolve          (destructive)
  */
 #[Mcp(
-  id: 'instruckt_drupal',
+  id: 'instruckt-drupal',
   name: new TranslatableMarkup('Instruckt Drupal'),
   description: new TranslatableMarkup('Tools for reading and resolving Instruckt annotations.'),
 )]

@@ -37,8 +37,8 @@ class InstrucktPluginTest extends KernelTestBase {
 
     return new InstrucktPlugin(
       [],
-      'instruckt_drupal',
-      ['id' => 'instruckt_drupal', 'label' => 'Instruckt Drupal', 'description' => 'Test'],
+      'instruckt-drupal',
+      ['id' => 'instruckt-drupal', 'label' => 'Instruckt Drupal', 'description' => 'Test'],
       $currentUser,
       $store,
       $configFactory,
