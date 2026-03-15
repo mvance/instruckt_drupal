@@ -250,4 +250,259 @@ class InstrucktStoreTest extends UnitTestCase {
     $this->assertSame($a1['id'], $pending[0]['id']);
   }
 
+  // ---------------------------------------------------------------------------
+  // Mutation-targeted tests (Step 5 of the mutation testing plan)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Kills mutant #2: LogicalOr → LogicalAnd on line 91.
+   *
+   * JSON that decodes successfully but is not an array must return [].
+   */
+  public function testGetAnnotationsReturnsEmptyForNonArrayJson(): void {
+    file_put_contents($this->tempDir . '/annotations.json', '"not-an-array"');
+    $this->assertSame([], $this->store->getAnnotations());
+  }
+
+  /**
+   * Kills mutant #3: UnwrapArrayValues removed on line 104.
+   *
+   * Resolving the FIRST annotation leaves the second at filtered key 1.
+   * array_values() re-indexes it to 0; without it $pending[0] is undefined.
+   */
+  public function testGetPendingAnnotationsReIndexesKeysAfterFirstResolved(): void {
+    $a1 = $this->store->createAnnotation([
+      'x' => 1, 'y' => 1, 'comment' => 'First', 'element' => '.a', 'url' => 'http://example.com',
+    ]);
+    $a2 = $this->store->createAnnotation([
+      'x' => 2, 'y' => 2, 'comment' => 'Second', 'element' => '.b', 'url' => 'http://example.com',
+    ]);
+    $this->store->updateAnnotation($a1['id'], ['status' => 'resolved']);
+    $pending = $this->store->getPendingAnnotations();
+    $this->assertCount(1, $pending);
+    $this->assertArrayHasKey(0, $pending);
+    $this->assertSame($a2['id'], $pending[0]['id']);
+  }
+
+  /**
+   * Kills mutants: Coalesce / Decrement / Increment / CastFloat defaults.
+   *
+   * Omitting x, y, url, element, intent, severity exercises every ?? default
+   * and the (float) cast. assertSame checks both value AND type.
+   */
+  public function testCreateAnnotationFieldDefaults(): void {
+    $annotation = $this->store->createAnnotation(['comment' => 'Min']);
+    $this->assertNotNull($annotation);
+    $this->assertSame('', $annotation['url']);
+    $this->assertSame(0.0, $annotation['x']);
+    $this->assertSame(0.0, $annotation['y']);
+    $this->assertSame('', $annotation['element']);
+    $this->assertSame('fix', $annotation['intent']);
+    $this->assertSame('important', $annotation['severity']);
+  }
+
+  /**
+   * Kills swapped-coalesce mutants on url / element / intent / severity.
+   *
+   * Infection's Coalesce mutator swaps `$data['x'] ?? 'default'` to
+   * `'default' ?? $data['x']`, which always evaluates to 'default'.
+   * Asserting the non-default value confirms the provided value is used.
+   */
+  public function testCreateAnnotationUsesProvidedOptionalFields(): void {
+    $annotation = $this->store->createAnnotation([
+      'url'      => 'http://custom.com',
+      'element'  => '.custom',
+      'intent'   => 'question',
+      'severity' => 'minor',
+      'comment'  => 'Test',
+    ]);
+    $this->assertNotNull($annotation);
+    $this->assertSame('http://custom.com', $annotation['url']);
+    $this->assertSame('.custom', $annotation['element']);
+    $this->assertSame('question', $annotation['intent']);
+    $this->assertSame('minor', $annotation['severity']);
+  }
+
+  /**
+   * Kills mutant #14: NotIdentical → Identical on line 347.
+   *
+   * When an annotation with a screenshot is resolved, the screenshot file
+   * must be deleted. With the mutation (=== NULL), deletion is skipped.
+   */
+  public function testResolvedAnnotationScreenshotIsDeleted(): void {
+    mkdir($this->tempDir . '/screenshots', 0755, TRUE);
+    $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI6QAAAABJRU5ErkJggg==');
+    $dataUrl = 'data:image/png;base64,' . base64_encode($png);
+    $annotation = $this->store->createAnnotation([
+      'comment' => 'Shot', 'element' => '.x', 'url' => 'http://example.com',
+      'screenshot' => $dataUrl,
+    ]);
+    $this->assertNotNull($annotation);
+    $screenshotRelPath = $annotation['screenshot'];
+    $this->assertNotNull($screenshotRelPath);
+    $screenshotFullPath = $this->tempDir . '/' . $screenshotRelPath;
+    $this->assertFileExists($screenshotFullPath);
+    $this->store->updateAnnotation($annotation['id'], ['status' => 'resolved']);
+    $this->assertFileDoesNotExist($screenshotFullPath);
+  }
+
+  /**
+   * Kills mutant #15: MethodCallRemoval removes prepareDirectory on line 371.
+   *
+   * Calling saveScreenshot without pre-creating the screenshots directory
+   * relies on prepareDirectory to create it. Without that call, saveData fails.
+   */
+  public function testSaveScreenshotCreatesDirectoryIfMissing(): void {
+    // Do NOT mkdir screenshots — prepareDirectory mock must do it.
+    $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI6QAAAABJRU5ErkJggg==');
+    $dataUrl = 'data:image/png;base64,' . base64_encode($png);
+    $relPath = $this->store->saveScreenshot('01AAAAAAAAAAAAAAAAAAAAAAAAB', $dataUrl);
+    $this->assertNotNull($relPath);
+  }
+
+  /**
+   * Kills mutants #17, #18: ArrayItemRemoval / Coalesce on allowed_screenshot_extensions.
+   *
+   * When config returns NULL the default ['png', 'svg'] is used. Removing 'svg'
+   * from the default rejects the SVG; removing 'png' rejects the PNG.
+   */
+  public function testSaveScreenshotUsesDefaultAllowedExtensionsForPng(): void {
+    $store = $this->makeStore(['allowed_screenshot_extensions' => NULL]);
+    mkdir($this->tempDir . '/screenshots', 0755, TRUE);
+    $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI6QAAAABJRU5ErkJggg==');
+    $dataUrl = 'data:image/png;base64,' . base64_encode($png);
+    $this->assertNotNull($store->saveScreenshot('01AAAAAAAAAAAAAAAAAAAAAAAAC', $dataUrl));
+  }
+
+  public function testSaveScreenshotUsesDefaultAllowedExtensionsForSvg(): void {
+    $store = $this->makeStore(['allowed_screenshot_extensions' => NULL]);
+    mkdir($this->tempDir . '/screenshots', 0755, TRUE);
+    $svg = '<svg xmlns="http://www.w3.org/2000/svg"><rect/></svg>';
+    $dataUrl = 'data:image/svg+xml;base64,' . base64_encode($svg);
+    $this->assertNotNull($store->saveScreenshot('01AAAAAAAAAAAAAAAAAAAAAAAAG', $dataUrl));
+  }
+
+  /**
+   * Kills mutant #21: Coalesce removes ?? 5242880 on line 402.
+   *
+   * When config returns NULL the default (5 242 880) applies. Without the
+   * coalesce, $maxSize = NULL and PHP coerces it to 0 in comparison, causing
+   * every non-empty image to be rejected.
+   */
+  public function testSaveScreenshotUsesDefaultMaxSizeWhenConfigNull(): void {
+    $store = $this->makeStore(['max_screenshot_size' => NULL]);
+    mkdir($this->tempDir . '/screenshots', 0755, TRUE);
+    $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI6QAAAABJRU5ErkJggg==');
+    $dataUrl = 'data:image/png;base64,' . base64_encode($png);
+    $this->assertNotNull($store->saveScreenshot('01AAAAAAAAAAAAAAAAAAAAAAAAD', $dataUrl));
+  }
+
+  /**
+   * Kills mutant #22: GreaterThan → GreaterThanOrEqual on line 403.
+   *
+   * A file of exactly max_screenshot_size bytes must be accepted (> not >=).
+   * With >= the boundary file is rejected and the assertion fails.
+   */
+  public function testSaveScreenshotAllowsExactlyMaxSizeBytes(): void {
+    // URL-encoded SVG: rawData after split is '<svg>' = 5 bytes.
+    $store = $this->makeStore(['max_screenshot_size' => 5]);
+    $relPath = $store->saveScreenshot('01AAAAAAAAAAAAAAAAAAAAAAAAE', 'data:image/svg+xml,<svg>');
+    $this->assertNotNull($relPath); // 5 > 5 is false → allowed; 5 >= 5 would reject
+  }
+
+  /**
+   * Kills mutants #23, #24: Concat / ConcatOperandRemoval on line 410.
+   *
+   * Mutants corrupt the URI used by saveData, writing the file to the wrong
+   * location. The assertion that the file exists at the canonical path fails.
+   */
+  public function testSaveScreenshotSavesToCorrectFilesystemPath(): void {
+    mkdir($this->tempDir . '/screenshots', 0755, TRUE);
+    $id = '01AAAAAAAAAAAAAAAAAAAAAAAAF';
+    $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI6QAAAABJRU5ErkJggg==');
+    $dataUrl = 'data:image/png;base64,' . base64_encode($png);
+    $this->store->saveScreenshot($id, $dataUrl);
+    $this->assertFileExists($this->tempDir . '/screenshots/' . $id . '.png');
+  }
+
+  /**
+   * Kills mutants #26-30: Concat / ConcatOperandRemoval / LogicalNot on lines 426-427.
+   *
+   * getScreenshotRealPath must return the real path when the file exists.
+   * URI corruption mutations cause file_exists to return false → returns NULL.
+   * LogicalNot inverts the condition, returning NULL for existing files.
+   */
+  public function testGetScreenshotRealPathReturnsPathForExistingFile(): void {
+    $screenshotsDir = $this->tempDir . '/screenshots';
+    mkdir($screenshotsDir, 0755, TRUE);
+    file_put_contents($screenshotsDir . '/test.png', 'dummy');
+    $result = $this->store->getScreenshotRealPath('screenshots/test.png');
+    $this->assertNotNull($result);
+    $this->assertSame(realpath($this->tempDir . '/screenshots/test.png'), $result);
+  }
+
+  /**
+   * Kills mutants #31-35: Concat / ConcatOperandRemoval / IfNegation on lines 437-438.
+   *
+   * deleteScreenshot must delete the file at the correct path. URI mutations
+   * compute wrong paths so file_exists returns false → file is not deleted.
+   * IfNegation inverts the condition, skipping deletion for existing files.
+   */
+  public function testDeleteScreenshotRemovesExistingFile(): void {
+    $screenshotsDir = $this->tempDir . '/screenshots';
+    mkdir($screenshotsDir, 0755, TRUE);
+    $relPath = 'screenshots/delete_me.png';
+    $fullPath = $this->tempDir . '/' . $relPath;
+    file_put_contents($fullPath, 'content');
+    $this->assertFileExists($fullPath);
+    $this->store->deleteScreenshot($relPath);
+    $this->assertFileDoesNotExist($fullPath);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Helper
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Creates an InstrucktStore with config value overrides (NULL = use default).
+   */
+  private function makeStore(array $configOverrides = []): InstrucktStore {
+    $defaults = [
+      'storage_path'                  => $this->tempDir,
+      'allowed_screenshot_extensions' => ['png', 'svg'],
+      'max_screenshot_size'           => 5242880,
+    ];
+    $configValues = array_merge($defaults, $configOverrides);
+
+    $config = $this->createMock(ImmutableConfig::class);
+    $config->method('get')->willReturnCallback(
+      fn(string $key) => $configValues[$key] ?? NULL
+    );
+
+    $configFactory = $this->createMock(ConfigFactoryInterface::class);
+    $configFactory->method('get')->willReturn($config);
+
+    $fileSystem = $this->createMock(FileSystemInterface::class);
+    $fileSystem->method('prepareDirectory')->willReturnCallback(function (string &$path): bool {
+      if (!is_dir($path)) {
+        mkdir($path, 0755, TRUE);
+      }
+      return TRUE;
+    });
+    $fileSystem->method('realpath')->willReturnCallback(fn($p) => realpath($p) ?: NULL);
+    $fileSystem->method('saveData')->willReturnCallback(
+      function (string $data, string $uri): string|false {
+        return file_put_contents($uri, $data) !== FALSE ? $uri : FALSE;
+      }
+    );
+    $fileSystem->method('delete')->willReturnCallback(function (string $uri): void {
+      if (file_exists($uri)) {
+        unlink($uri);
+      }
+    });
+
+    $logger = $this->createMock(LoggerChannelInterface::class);
+    return new InstrucktStore($configFactory, $fileSystem, $logger);
+  }
+
 }
