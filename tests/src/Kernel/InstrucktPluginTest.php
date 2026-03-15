@@ -20,6 +20,9 @@ class InstrucktPluginTest extends KernelTestBase {
 
   protected static $modules = [];
 
+  // Valid 26-character Crockford Base32 ULID used across tests.
+  private const VALID_ULID = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
+
   private function buildPlugin(bool $enabled = TRUE, bool $hasPermission = TRUE, array $pendingAnnotations = []): InstrucktPlugin {
     $config = $this->createMock(ImmutableConfig::class);
     $config->method('get')->with('enabled')->willReturn($enabled);
@@ -46,6 +49,38 @@ class InstrucktPluginTest extends KernelTestBase {
   }
 
   /**
+   * Builds a plugin with a fully-configured store mock for per-test control.
+   */
+  private function buildPluginWithStore(
+    InstrucktStore $store,
+    bool $enabled = TRUE,
+    bool $hasPermission = TRUE,
+  ): InstrucktPlugin {
+    $config = $this->createMock(ImmutableConfig::class);
+    $config->method('get')->with('enabled')->willReturn($enabled);
+    $configFactory = $this->createMock(ConfigFactoryInterface::class);
+    $configFactory->method('get')->willReturn($config);
+
+    $currentUser = $this->createMock(AccountProxyInterface::class);
+    $currentUser->method('hasPermission')
+      ->with('access instruckt_drupal toolbar')
+      ->willReturn($hasPermission);
+
+    return new InstrucktPlugin(
+      [],
+      'instruckt-drupal',
+      ['id' => 'instruckt-drupal', 'label' => 'Instruckt Drupal', 'description' => 'Test'],
+      $currentUser,
+      $store,
+      $configFactory,
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Tool definitions
+  // ---------------------------------------------------------------------------
+
+  /**
    * @covers ::getTools
    */
   public function testGetToolsReturnsThreeTools(): void {
@@ -65,55 +100,6 @@ class InstrucktPluginTest extends KernelTestBase {
     $this->assertContains('instruckt_get_all_pending', $names);
     $this->assertContains('instruckt_get_screenshot', $names);
     $this->assertContains('instruckt_resolve', $names);
-  }
-
-  /**
-   * @covers ::executeTool
-   */
-  public function testExecuteToolUnknownReturnsErrorText(): void {
-    $result = $this->buildPlugin()->executeTool('nonexistent_tool', []);
-    $this->assertIsArray($result);
-    $this->assertCount(1, $result);
-    $this->assertSame('text', $result[0]['type']);
-    $this->assertStringContainsString('Unknown', $result[0]['text']);
-  }
-
-  /**
-   * @covers ::executeTool
-   */
-  public function testExecuteToolWhenDisabledReturnsDisabledMessage(): void {
-    $result = $this->buildPlugin(FALSE)->executeTool('instruckt_get_all_pending', []);
-    $this->assertSame('text', $result[0]['type']);
-    $this->assertStringContainsString('disabled', strtolower($result[0]['text']));
-  }
-
-  /**
-   * @covers ::executeTool
-   */
-  public function testExecuteToolWithoutPermissionReturnsAccessDenied(): void {
-    $result = $this->buildPlugin(TRUE, FALSE)->executeTool('instruckt_get_all_pending', []);
-    $this->assertSame('text', $result[0]['type']);
-    $this->assertStringContainsString('Access denied', $result[0]['text']);
-  }
-
-  /**
-   * @covers ::executeTool
-   */
-  public function testGetAllPendingReturnsPendingAnnotations(): void {
-    $annotations = [
-      ['id' => '01AAAAAAAAAAAAAAAAAAAAAAAAA', 'comment' => 'Test', 'status' => 'pending'],
-    ];
-    $result = $this->buildPlugin(TRUE, TRUE, $annotations)->executeTool('instruckt_get_all_pending', []);
-    $this->assertSame('text', $result[0]['type']);
-    $decoded = json_decode($result[0]['text'], TRUE);
-    $this->assertSame(1, $decoded['count']);
-  }
-
-  /**
-   * @covers ::checkRequirements
-   */
-  public function testCheckRequirementsAlwaysTrue(): void {
-    $this->assertTrue($this->buildPlugin()->checkRequirements());
   }
 
   /**
@@ -138,6 +124,257 @@ class InstrucktPluginTest extends KernelTestBase {
         $this->assertTrue($tool->annotations->destructiveHint ?? FALSE);
       }
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Plugin ID and endpoint-facing tool names
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Plugin ID must satisfy drupal/mcp's validation: letters, numbers, hyphens
+   * only. Underscores cause an Internal Error at runtime on every MCP request.
+   */
+  public function testPluginIdIsValidMcpId(): void {
+    $this->assertMatchesRegularExpression(
+      '/^[a-zA-Z0-9-]+$/',
+      $this->buildPlugin()->getPluginId(),
+      'Plugin ID must contain only letters, numbers, and hyphens (drupal/mcp validation rule).',
+    );
+  }
+
+  /**
+   * The MCP module prefixes tool names with the plugin ID when building the
+   * tools/list response and when routing tools/call requests. This test locks
+   * in the exact names that MCP clients must use.
+   */
+  public function testGeneratedToolNamesMatchEndpointNames(): void {
+    $plugin = $this->buildPlugin();
+    $actual = array_map(
+      fn(Tool $t) => $plugin->generateToolId($plugin->getPluginId(), $t->name),
+      $plugin->getTools(),
+    );
+    $this->assertSame([
+      'instruckt-drupal_instruckt_get_all_pending',
+      'instruckt-drupal_instruckt_get_screenshot',
+      'instruckt-drupal_instruckt_resolve',
+    ], $actual);
+  }
+
+  // ---------------------------------------------------------------------------
+  // executeTool — guard rails (disabled / no permission / unknown tool)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @covers ::executeTool
+   */
+  public function testExecuteToolWhenDisabledReturnsDisabledMessage(): void {
+    $result = $this->buildPlugin(FALSE)->executeTool('instruckt_get_all_pending', []);
+    $this->assertSame('text', $result[0]['type']);
+    $this->assertStringContainsString('disabled', strtolower($result[0]['text']));
+  }
+
+  /**
+   * @covers ::executeTool
+   */
+  public function testExecuteToolWithoutPermissionReturnsAccessDenied(): void {
+    $result = $this->buildPlugin(TRUE, FALSE)->executeTool('instruckt_get_all_pending', []);
+    $this->assertSame('text', $result[0]['type']);
+    $this->assertStringContainsString('Access denied', $result[0]['text']);
+  }
+
+  /**
+   * @covers ::executeTool
+   */
+  public function testExecuteToolUnknownReturnsErrorText(): void {
+    $result = $this->buildPlugin()->executeTool('nonexistent_tool', []);
+    $this->assertIsArray($result);
+    $this->assertCount(1, $result);
+    $this->assertSame('text', $result[0]['type']);
+    $this->assertStringContainsString('Unknown', $result[0]['text']);
+  }
+
+  // ---------------------------------------------------------------------------
+  // instruckt_get_all_pending
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @covers ::executeTool
+   */
+  public function testGetAllPendingReturnsPendingAnnotations(): void {
+    $annotations = [
+      ['id' => self::VALID_ULID, 'comment' => 'Test', 'status' => 'pending'],
+    ];
+    $result = $this->buildPlugin(TRUE, TRUE, $annotations)->executeTool('instruckt_get_all_pending', []);
+    $this->assertSame('text', $result[0]['type']);
+    $decoded = json_decode($result[0]['text'], TRUE);
+    $this->assertSame(1, $decoded['count']);
+  }
+
+  // ---------------------------------------------------------------------------
+  // instruckt_get_screenshot
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @covers ::executeTool
+   */
+  public function testGetScreenshotMissingAnnotationIdReturnsError(): void {
+    $result = $this->buildPlugin()->executeTool('instruckt_get_screenshot', []);
+    $this->assertSame('text', $result[0]['type']);
+    $this->assertSame('annotation_id is required.', $result[0]['text']);
+  }
+
+  /**
+   * @covers ::executeTool
+   */
+  public function testGetScreenshotInvalidUlidReturnsError(): void {
+    $result = $this->buildPlugin()->executeTool('instruckt_get_screenshot', ['annotation_id' => 'not-a-valid-ulid!!']);
+    $this->assertSame('text', $result[0]['type']);
+    $this->assertSame('Invalid annotation_id format.', $result[0]['text']);
+  }
+
+  /**
+   * @covers ::executeTool
+   */
+  public function testGetScreenshotAnnotationNotFoundReturnsError(): void {
+    // Store returns no annotations (default empty array in buildPlugin).
+    $result = $this->buildPlugin()->executeTool('instruckt_get_screenshot', ['annotation_id' => self::VALID_ULID]);
+    $this->assertSame('text', $result[0]['type']);
+    $this->assertSame('Annotation not found.', $result[0]['text']);
+  }
+
+  /**
+   * @covers ::executeTool
+   */
+  public function testGetScreenshotAnnotationWithNoScreenshotReturnsError(): void {
+    $store = $this->createMock(InstrucktStore::class);
+    $store->method('getAnnotations')->willReturn([
+      ['id' => self::VALID_ULID, 'screenshot' => NULL],
+    ]);
+
+    $result = $this->buildPluginWithStore($store)
+      ->executeTool('instruckt_get_screenshot', ['annotation_id' => self::VALID_ULID]);
+    $this->assertSame('text', $result[0]['type']);
+    $this->assertSame('Annotation has no screenshot.', $result[0]['text']);
+  }
+
+  /**
+   * @covers ::executeTool
+   */
+  public function testGetScreenshotFileNotOnDiskReturnsError(): void {
+    $store = $this->createMock(InstrucktStore::class);
+    $store->method('getAnnotations')->willReturn([
+      ['id' => self::VALID_ULID, 'screenshot' => 'screenshots/' . self::VALID_ULID . '.png'],
+    ]);
+    $store->method('getScreenshotRealPath')->willReturn(NULL);
+
+    $result = $this->buildPluginWithStore($store)
+      ->executeTool('instruckt_get_screenshot', ['annotation_id' => self::VALID_ULID]);
+    $this->assertSame('text', $result[0]['type']);
+    $this->assertSame('Screenshot file not found on disk.', $result[0]['text']);
+  }
+
+  /**
+   * @covers ::executeTool
+   */
+  public function testGetScreenshotSuccessReturnsBase64Image(): void {
+    $tmpFile = tempnam(sys_get_temp_dir(), 'instruckt_test_') . '.png';
+    file_put_contents($tmpFile, 'fake-png-data');
+
+    $store = $this->createMock(InstrucktStore::class);
+    $store->method('getAnnotations')->willReturn([
+      ['id' => self::VALID_ULID, 'screenshot' => 'screenshots/' . self::VALID_ULID . '.png'],
+    ]);
+    $store->method('getScreenshotRealPath')->willReturn($tmpFile);
+
+    $result = $this->buildPluginWithStore($store)
+      ->executeTool('instruckt_get_screenshot', ['annotation_id' => self::VALID_ULID]);
+
+    unlink($tmpFile);
+
+    $this->assertSame('image', $result[0]['type']);
+    $this->assertSame(base64_encode('fake-png-data'), $result[0]['data']);
+    $this->assertSame('image/png', $result[0]['mimeType']);
+  }
+
+  // ---------------------------------------------------------------------------
+  // instruckt_resolve
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @covers ::executeTool
+   */
+  public function testResolveMissingIdReturnsError(): void {
+    $result = $this->buildPlugin()->executeTool('instruckt_resolve', []);
+    $this->assertSame('text', $result[0]['type']);
+    $this->assertSame('id is required.', $result[0]['text']);
+  }
+
+  /**
+   * @covers ::executeTool
+   */
+  public function testResolveInvalidUlidReturnsError(): void {
+    $result = $this->buildPlugin()->executeTool('instruckt_resolve', ['id' => 'not-a-valid-ulid!!']);
+    $this->assertSame('text', $result[0]['type']);
+    $this->assertSame('Invalid id format.', $result[0]['text']);
+  }
+
+  /**
+   * @covers ::executeTool
+   */
+  public function testResolveStorageErrorReturnsError(): void {
+    $store = $this->createMock(InstrucktStore::class);
+    $store->method('updateAnnotation')->willReturn(FALSE);
+
+    $result = $this->buildPluginWithStore($store)
+      ->executeTool('instruckt_resolve', ['id' => self::VALID_ULID]);
+    $this->assertSame('text', $result[0]['type']);
+    $this->assertSame('Storage error resolving annotation.', $result[0]['text']);
+  }
+
+  /**
+   * @covers ::executeTool
+   */
+  public function testResolveAnnotationNotFoundReturnsError(): void {
+    $store = $this->createMock(InstrucktStore::class);
+    $store->method('updateAnnotation')->willReturn(NULL);
+
+    $result = $this->buildPluginWithStore($store)
+      ->executeTool('instruckt_resolve', ['id' => self::VALID_ULID]);
+    $this->assertSame('text', $result[0]['type']);
+    $this->assertSame('Annotation not found.', $result[0]['text']);
+  }
+
+  /**
+   * @covers ::executeTool
+   */
+  public function testResolveSuccessReturnsResolvedAnnotationJson(): void {
+    $resolved = [
+      'id'          => self::VALID_ULID,
+      'status'      => 'resolved',
+      'resolved_by' => 'agent',
+    ];
+    $store = $this->createMock(InstrucktStore::class);
+    $store->method('updateAnnotation')
+      ->with(self::VALID_ULID, ['status' => 'resolved'], 'agent')
+      ->willReturn($resolved);
+
+    $result = $this->buildPluginWithStore($store)
+      ->executeTool('instruckt_resolve', ['id' => self::VALID_ULID]);
+    $this->assertSame('text', $result[0]['type']);
+    $decoded = json_decode($result[0]['text'], TRUE);
+    $this->assertSame('resolved', $decoded['status']);
+    $this->assertSame('agent', $decoded['resolved_by']);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Miscellaneous
+  // ---------------------------------------------------------------------------
+
+  /**
+   * @covers ::checkRequirements
+   */
+  public function testCheckRequirementsAlwaysTrue(): void {
+    $this->assertTrue($this->buildPlugin()->checkRequirements());
   }
 
 }
