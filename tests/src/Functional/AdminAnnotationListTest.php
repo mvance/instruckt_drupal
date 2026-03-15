@@ -285,6 +285,16 @@ class AdminAnnotationListTest extends BrowserTestBase {
     $this->drupalGet('/admin/content/instruckt');
     $this->assertSession()->statusCodeEquals(200);
     $this->assertSession()->elementExists('css', 'nav.pager');
+
+    // Page 1 must show exactly 25 rows.
+    $rows = $this->getSession()->getPage()->findAll('css', 'table tbody tr');
+    $this->assertCount(25, $rows, 'Page 1 should contain exactly 25 annotation rows.');
+
+    // Page 2 (0-indexed as ?page=1) must show the remaining 1 row.
+    $this->drupalGet('/admin/content/instruckt', ['query' => ['page' => 1]]);
+    $this->assertSession()->statusCodeEquals(200);
+    $rows = $this->getSession()->getPage()->findAll('css', 'table tbody tr');
+    $this->assertCount(1, $rows, 'Page 2 should contain exactly 1 annotation row.');
   }
 
   /**
