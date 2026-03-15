@@ -109,6 +109,26 @@ Visit `/admin/config/mcp/plugins`, enable the **Instruckt Drupal** plugin, and s
 4. Fill in a comment, choose an intent and severity, and optionally capture a screenshot.
 5. Submit the annotation. It is immediately available to AI agents via MCP.
 
+### Twig template context
+
+When [Twig debug mode](https://www.drupal.org/docs/develop/theming-drupal/twig-in-drupal/debugging-twig-templates)
+is enabled in `settings.php`:
+
+```php
+$settings['twig_debug'] = TRUE;
+```
+
+annotations created on front-end pages will automatically include the Twig template that
+rendered the annotated element. No additional configuration is required — the feature
+activates when debug HTML comments are present in the DOM.
+
+The template name (`component`) and path (`source_file`) appear in the annotation's detail
+view at `/admin/content/instruckt/{id}` and are included in the JSON returned by the
+`instruckt-drupal_instruckt_get_all_pending` MCP tool.
+
+> **Note:** Enable Twig debug only in development environments. It adds HTML comments to
+> every page response and degrades performance on production sites.
+
 ### For AI agents (MCP)
 
 Configure your AI agent to connect to the site's MCP endpoint:
@@ -187,10 +207,6 @@ for escaped mutants. Common follow-up actions:
 
 **Scope:** targets Unit tests only (fast). Kernel/Functional tests are excluded
 to keep each mutant run sub-second.
-
-## Future Enhancements
-
-- **Twig template debug data in annotations.** When Drupal's Twig debug mode is enabled, the rendered HTML contains comments identifying the template file used for each region (e.g. `<!-- THEME DEBUG -->`). A new `drupal` adapter for the upstream `instruckt` JS library (`src/adapters/drupal.ts`) could walk the DOM upward from the clicked element, parse those comments, and return the template name and path as a `FrameworkContext` — populating the existing `component` and `source_file` fields without any type changes. Users would opt in by including `'drupal'` in the `adapters` array passed to `new Instruckt({...})`. The adapter should be checked before the generic `blade` fallback in `detectFramework()`. Because instruckt uses a priority-based adapter pattern, no patch to the core library is required — only a new adapter file and a one-line addition to `detectFramework()`. On the Drupal side, no backend changes are needed: `AnnotationController` already passes `framework` context through `SourceResolver` and stores it verbatim. The feature is opt-in at the JS configuration level; sites without Twig debug mode enabled receive no change in behavior.
 
 ## Credits
 

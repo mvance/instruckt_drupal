@@ -10,38 +10,48 @@ use Drupal\Core\Routing\RouteMatchInterface;
  * This works regardless of the module's install location (contrib, custom, etc.)
  */
 function instruckt_drupal_library_info_build(): array {
+  // twig-debug contains only module JS; no dependency on the external IIFE.
+  // Register it unconditionally so hook_page_attachments() can always attach it.
+  $libraries = [
+    'twig-debug' => [
+      'js'           => ['js/instruckt-twig-debug.js' => []],
+      'dependencies' => ['core/drupal', 'core/drupalSettings'],
+    ],
+  ];
+
   // Use the absolute FS path ONLY for file_exists() — never as a library key.
   // Drupal's LibraryDiscoveryParser expects files outside the module to use a
   // root-relative path with a leading slash (e.g. '/libraries/instruckt/...')
   // as the array key. Using the absolute FS path would emit a broken
   // <script src="/var/www/html/web/libraries/..."> tag and a 404 at runtime.
-  $iife_fs = \Drupal::root() . '/libraries/instruckt/dist/instruckt.iife.js';
+  $iife_fs  = \Drupal::root() . '/libraries/instruckt/dist/instruckt.iife.js';
   $iife_key = '/libraries/instruckt/dist/instruckt.iife.js';
 
   if (!file_exists($iife_fs) || !is_readable($iife_fs)) {
     // File missing: hook_requirements() will report this as REQUIREMENT_ERROR.
-    // Returning [] means 'instruckt_drupal/toolbar' won't exist as a library.
+    // Returning early means 'instruckt_drupal/toolbar' won't exist as a library.
     // hook_page_attachments() checks _instruckt_drupal_iife_available() before
     // attaching, to avoid render-time "library not found" exceptions.
-    return [];
+    // twig-debug is still registered above.
+    return $libraries;
   }
 
-  return [
-    'toolbar' => [
-      'js' => [
-        $iife_key => ['minified' => TRUE, 'weight' => -1],
-        // Paths without a leading slash are relative to the module directory,
-        // matching the convention used in .libraries.yml files.
-        'js/instruckt-toolbar.js' => ['weight' => 0],
-      ],
-      'css' => [
-        'theme' => [
-          'css/instruckt-toolbar.css' => [],
-        ],
-      ],
-      'dependencies' => ['core/drupal', 'core/drupalSettings'],
+  $libraries['toolbar'] = [
+    'js' => [
+      $iife_key => ['minified' => TRUE, 'weight' => -1],
+      // Paths without a leading slash are relative to the module directory,
+      // matching the convention used in .libraries.yml files.
+      'js/instruckt-toolbar.js' => ['weight' => 0],
     ],
+    'css' => [
+      'theme' => [
+        'css/instruckt-toolbar.css' => [],
+      ],
+    ],
+    'dependencies' => ['core/drupal', 'core/drupalSettings'],
   ];
+
+  return $libraries;
 }
 
 /**
@@ -101,6 +111,7 @@ function instruckt_drupal_page_attachments(array &$attachments) {
   }
 
   $attachments['#attached']['library'][] = 'instruckt_drupal/toolbar';
+  $attachments['#attached']['library'][] = 'instruckt_drupal/twig-debug';
   // Use Url::fromRoute() so the endpoint is correct for subdirectory installs
   // AND multilingual sites with path-prefix language negotiation (e.g. /en/...).
   // base_path() alone omits language prefixes; Url::fromRoute() handles both.
