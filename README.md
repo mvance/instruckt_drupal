@@ -46,7 +46,28 @@ for the one-time project setup required.
 
 ## Installation
 
-### 1. Configure root `composer.json` (one-time project setup)
+### 1. Create the private filesystem directory
+
+Instruckt stores annotations and screenshots in Drupal's private filesystem. Create the directory before requiring the module and configure its path in `settings.php`.
+
+Create the directory from your project root:
+
+```bash
+mkdir -p web/private
+```
+
+Then add to `web/sites/default/settings.php`:
+
+```php
+$settings['file_private_path'] = '/absolute/server/path/to/web/private';
+```
+
+> **DDEV:** Inside a DDEV container the project root is mounted at `/var/www/html`, so use:
+> ```php
+> $settings['file_private_path'] = '/var/www/html/web/private';
+> ```
+
+### 2. Configure root `composer.json` (one-time project setup)
 
 Before requiring this module, ensure your project's root `composer.json` includes Asset Packagist and the npm-asset installer. Most Drupal project templates do not include these by default.
 
@@ -74,7 +95,13 @@ Add the `npm-asset` installer path to the `extra` section of your root `composer
 }
 ```
 
-### 2. Require the module
+> **Important — merge, don't replace:** `drupal/recommended-project` already has an `extra` section containing an `installer-paths` block with a `"web/libraries/{$name}"` entry for `type:drupal-library`. Add `"installer-types"` as a new key and append `"type:npm-asset"` to that existing array. The merged entry should read:
+> ```json
+> "web/libraries/{$name}": ["type:drupal-library", "type:npm-asset"]
+> ```
+> Replacing the entire `extra` block will remove the scaffold, module, theme, and recipe installer paths required by Drupal core.
+
+### 3. Require the module
 
 ```bash
 composer require drupal/instruckt_drupal
@@ -82,22 +109,60 @@ composer require drupal/instruckt_drupal
 
 This installs the module and its JavaScript dependency (`npm-asset/instruckt`), automatically placing `instruckt.iife.js` at `web/libraries/instruckt/dist/instruckt.iife.js`.
 
-### 3. Enable the module
+### 4. Enable the module
+
+**Via the admin UI:** navigate to `/admin/modules`, search for and enable both **MCP** and **Instruckt Drupal**, then save. Clear caches at `/admin/config/development/performance`.
+
+**Alternatively, with Drush:**
 
 ```bash
 drush en mcp instruckt_drupal && drush cr
 ```
 
-### 4. Configure permissions
+### 5. Configure permissions
 
 At `/admin/people/permissions`, grant two permissions to the relevant role(s):
 
 - **`access instruckt_drupal toolbar`** — allows users to create and view annotations via the browser toolbar
 - **`use mcp server`** — allows AI agents (and any authenticated user) to access the MCP endpoint; without this permission, `tools/list` returns an empty array with no error message
 
-### 5. Enable the MCP plugin
+### 6. Enable the MCP plugin
 
 Visit `/admin/config/mcp/plugins`, enable the **Instruckt Drupal** plugin, and save. This exposes the three MCP tools to AI agents connecting to `/mcp/post`.
+
+### 7. Configure MCP authentication
+
+> For full details on all authentication methods and transport options, see the [drupal/mcp documentation at drupalmcp.io](https://drupalmcp.io/en/mcp-server/setup-configure/).
+
+The steps below set up token authentication, the recommended method for AI agent access.
+
+#### Create an authentication token
+
+1. Visit `/admin/config/system/keys` → **Add key**
+2. Set **Key type** to *Authentication* and **Key provider** to *Configuration*
+3. Enter a long random string in **Key value** — for example:
+   ```bash
+   openssl rand -hex 32
+   ```
+4. Give the key a machine name (e.g., `mcp_auth_token`) and save
+
+#### Enable token authentication in the MCP module
+
+1. Visit `/admin/config/mcp`
+2. Under **Authentication**, enable **Token authentication**
+3. Select the key you just created
+4. Set **Token user** to a Drupal user account — MCP requests authenticated with this token will run as that user, so its roles and permissions apply
+5. Save
+
+#### Encode the token for use in client config
+
+The MCP authentication provider requires credentials in HTTP Basic auth format. Base64-encode the raw token value (no username, no colon) to produce the value you'll use in `Authorization` headers:
+
+```bash
+echo -n "your-raw-token-value" | base64
+```
+
+Keep both values — the raw token (stored in the Key) and the base64-encoded string (used in client headers).
 
 ## Usage
 
@@ -131,13 +196,61 @@ view at `/admin/content/instruckt/{id}` and are included in the JSON returned by
 
 ### For AI agents (MCP)
 
-Configure your AI agent to connect to the site's MCP endpoint:
+> For full documentation on transport options, authentication methods, and all supported clients, see [drupalmcp.io: Connect to LLMs](https://drupalmcp.io/en/mcp-server/connect-to-llms/) and [Streamable HTTP](https://drupalmcp.io/en/mcp-server/streamable-http/).
+
+Configure your AI agent to send `POST` requests to:
 
 ```
-POST https://your-site.example.com/mcp/post
+https://your-site.example.com/mcp/post
 ```
 
-Authenticate using a Drupal session or API token (configured at `/admin/config/mcp`). The connecting user must have the `use mcp server` permission — without it, `tools/list` silently returns an empty array.
+#### Authentication
+
+The MCP module uses HTTP Basic auth format for all authentication methods. When using token auth (see Installation step 7), base64-encode the raw token value — with no username or colon — and send it as:
+
+```
+Authorization: Basic <base64-encoded-token>
+```
+
+Without valid credentials, or if the authenticated user lacks the `use mcp server` permission, `tools/list` silently returns an empty array with no error message.
+
+#### Client configuration
+
+**Claude Code** — create or edit `.mcp.json` in the project root:
+
+```json
+{
+  "mcpServers": {
+    "instruckt-drupal": {
+      "type": "http",
+      "url": "https://your-site.example.com/mcp/post",
+      "headers": {
+        "Authorization": "Basic <base64-encoded-token>"
+      }
+    }
+  }
+}
+```
+
+**Cursor** — add to `.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "instruckt-drupal": {
+      "type": "streamable-http",
+      "url": "https://your-site.example.com/mcp/post",
+      "headers": {
+        "Authorization": "Basic <base64-encoded-token>"
+      }
+    }
+  }
+}
+```
+
+**Claude Desktop** and other clients that do not natively support HTTP transport require the `mcp-remote` bridge. See [drupalmcp.io: Streamable HTTP](https://drupalmcp.io/en/mcp-server/streamable-http/) for setup instructions.
+
+#### Available tools
 
 The agent will discover three tools. The `drupal/mcp` module prefixes all tool names with the plugin ID, so they appear as:
 
