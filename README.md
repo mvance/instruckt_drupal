@@ -17,11 +17,13 @@ Annotations are stored as JSON in the Drupal private filesystem (`private://_ins
 
 AI coding agents (Claude, Cursor, etc.) connect to the site's [drupal/mcp](https://www.drupal.org/project/mcp) endpoint and use three registered MCP tools:
 
-| Tool | Description |
-|------|-------------|
-| `instruckt_get_all_pending` | Retrieve all pending annotations with full metadata |
-| `instruckt_get_screenshot` | Get the base64-encoded screenshot for an annotation |
-| `instruckt_resolve` | Mark an annotation as resolved by the agent |
+| Tool (as exposed at the MCP endpoint) | Description |
+|---------------------------------------|-------------|
+| `instruckt-drupal_instruckt_get_all_pending` | Retrieve all pending annotations with full metadata |
+| `instruckt-drupal_instruckt_get_screenshot` | Get the base64-encoded screenshot for an annotation |
+| `instruckt-drupal_instruckt_resolve` | Mark an annotation as resolved by the agent |
+
+> **Note:** The `drupal/mcp` module prefixes every tool name with the plugin ID (`instruckt-drupal`), so the names above are what appear in `tools/list` and must be used in `tools/call` requests.
 
 ## Requirements
 
@@ -77,7 +79,10 @@ drush en mcp instruckt_drupal && drush cr
 
 ### 4. Configure permissions
 
-Grant the `access instruckt_drupal toolbar` permission to the developer role(s) at `/admin/people/permissions`.
+At `/admin/people/permissions`, grant two permissions to the relevant role(s):
+
+- **`access instruckt_drupal toolbar`** — allows users to create and view annotations via the browser toolbar
+- **`use mcp server`** — allows AI agents (and any authenticated user) to access the MCP endpoint; without this permission, `tools/list` returns an empty array with no error message
 
 ### 5. Enable the MCP plugin
 
@@ -101,11 +106,13 @@ Configure your AI agent to connect to the site's MCP endpoint:
 POST https://your-site.example.com/mcp/post
 ```
 
-Authenticate using a Drupal session or API token (configured at `/admin/config/mcp`). The agent will discover three tools automatically:
+Authenticate using a Drupal session or API token (configured at `/admin/config/mcp`). The connecting user must have the `use mcp server` permission — without it, `tools/list` silently returns an empty array.
 
-- **`instruckt_get_all_pending`** — no arguments; returns all pending annotations as JSON
-- **`instruckt_get_screenshot`** — `annotation_id` (ULID string); returns the screenshot as a base64 image
-- **`instruckt_resolve`** — `id` (ULID string); marks the annotation resolved and deletes its screenshot
+The agent will discover three tools. The `drupal/mcp` module prefixes all tool names with the plugin ID, so they appear as:
+
+- **`instruckt-drupal_instruckt_get_all_pending`** — no arguments; returns all pending annotations as JSON
+- **`instruckt-drupal_instruckt_get_screenshot`** — `annotation_id` (ULID string); returns the screenshot as a base64 image
+- **`instruckt-drupal_instruckt_resolve`** — `id` (ULID string); marks the annotation resolved and deletes its screenshot
 
 ### Verifying the installation
 
