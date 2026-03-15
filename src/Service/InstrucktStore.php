@@ -5,6 +5,7 @@ namespace Drupal\instruckt_drupal\Service;
 use Drupal\Core\File\Exception\FileException;
 use Drupal\Core\Config\ImmutableConfig;
 use Drupal\Core\Config\ConfigFactoryInterface;
+use Drupal\Core\File\FileExists;
 use Drupal\Core\File\FileSystemInterface;
 use Drupal\Core\Logger\LoggerChannelInterface;
 use Drupal\instruckt_drupal\Exception\InstrucktStorageException;
@@ -440,7 +441,7 @@ class InstrucktStore {
     $filename = "{$id}.{$ext}";
     // Use fileSystem->saveData() for Drupal-idiomatic file writing.
     $uri = $this->screenshotsDir() . '/' . $filename;
-    if ($this->fileSystem->saveData($binary, $uri, FileSystemInterface::EXISTS_REPLACE) === FALSE) {
+    if ($this->fileSystem->saveData($binary, $uri, FileExists::Replace) === FALSE) {
       $this->logger->error('InstrucktStore: failed to save screenshot to @uri', ['@uri' => $uri]);
       return NULL;
     }

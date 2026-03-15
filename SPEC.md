@@ -1277,7 +1277,7 @@ class InstrucktStore {
     $filename = "{$id}.{$ext}";
     // Use fileSystem->saveData() for Drupal-idiomatic file writing.
     $uri = $this->screenshotsDir() . '/' . $filename;
-    if ($this->fileSystem->saveData($binary, $uri, FileSystemInterface::EXISTS_REPLACE) === FALSE) {
+    if ($this->fileSystem->saveData($binary, $uri, FileExists::Replace) === FALSE) {
       $this->logger->error('InstrucktStore: failed to save screenshot to @uri', ['@uri' => $uri]);
       return NULL;
     }
