@@ -24,9 +24,6 @@
     "npm-asset/instruckt": "^0.4",
     "oomphinc/composer-installers-extender": "^2.0"
   },
-  "require-dev": {
-    "drush/drush": "^13"
-  },
   "extra": {
     "installer-types": ["npm-asset", "bower-asset"],
     "installer-paths": {

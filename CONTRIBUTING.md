@@ -1,5 +1,43 @@
 # Contributing to Instruckt Drupal
 
+## Local Development Setup
+
+For development purposes, consider using [ddev-drupal-contrib](https://github.com/ddev/ddev-drupal-contrib), which uses a module-as-root layout and helps with dependency management, configuring test suites, and running quality checks and linting.
+
+```bash
+# 1. Clone and enter the repo
+git clone https://github.com/mvance/instruckt_drupal
+cd instruckt_drupal
+
+# 2. Configure DDEV (project name must match module machine name after hyphen→underscore conversion)
+ddev config --project-name=instruckt-drupal --project-type=drupal --docroot=web --php-version=8.3
+
+# 3. Install the contrib addon
+ddev add-on get ddev/ddev-drupal-contrib
+
+# 4. Start DDEV and scaffold Drupal core
+ddev start
+ddev poser
+
+# 5. Allow the oomphinc plugin if prompted, then re-run
+ddev exec composer config --no-plugins allow-plugins.oomphinc/composer-installers-extender true
+ddev poser
+
+# 6. Install Drush (project-level tool, not a module dependency)
+ddev exec composer require --dev drush/drush
+
+# 7. Detect installed Drupal version and create the module symlink
+ddev config --update && ddev restart
+
+# 8. Configure the private filesystem (required by this module)
+mkdir -p web/private
+echo "\$settings['file_private_path'] = '/var/www/html/web/private';" >> web/sites/default/settings.php
+
+# 9. Install Drupal and enable the module
+ddev drush site:install --yes --account-name=admin --account-pass=admin
+ddev drush en instruckt_drupal --yes
+```
+
 ## Running Tests
 
 Tests require a running DDEV environment and the private filesystem configured.
