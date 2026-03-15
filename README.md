@@ -44,12 +44,12 @@ $settings['file_private_path'] = '/absolute/server/path/to/web/private';
 
 ### 2. Configure root `composer.json` (one-time project setup)
 
-Before requiring this module, ensure your project's root `composer.json` includes Asset Packagist and the npm-asset installer. Most Drupal project templates do not include these by default.
+This module declares `oomphinc/composer-installers-extender` as a dependency and includes Asset Packagist in its own repository list, so Composer 2 resolves both automatically. You only need to allow the plugin and add the installer configuration to your project's root `composer.json`.
+
+Allow the oomphinc plugin (Composer's plugin security gate requires explicit approval):
 
 ```bash
-composer config repositories.asset-packagist composer https://asset-packagist.org
 composer config allow-plugins.oomphinc/composer-installers-extender true
-composer require oomphinc/composer-installers-extender:^2.0
 ```
 
 Then edit `composer.json` to add `"installer-types"` and append `"type:npm-asset"` to the existing `"web/libraries/{$name}"` installer-paths entry:
@@ -65,6 +65,9 @@ Then edit `composer.json` to add `"installer-types"` and append `"type:npm-asset
 ```
 
 _Append `"type:npm-asset"` to any existing `"web/libraries/{$name}"` entry — do not replace the entire `extra` block._
+
+> **Note:** If you are on Composer 1, or if Asset Packagist is not resolved automatically, also run:
+> `composer config repositories.asset-packagist composer https://asset-packagist.org`
 
 ### 3. Require the module
 

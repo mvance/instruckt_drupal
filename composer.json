@@ -9,11 +9,22 @@
       "email": "mvance@pobox.com"
     }
   ],
+  "repositories": [
+    {
+      "type": "composer",
+      "url": "https://asset-packagist.org"
+    }
+  ],
   "require": {
     "drupal/mcp": "^1.2",
-    "npm-asset/instruckt": "^0.4"
+    "npm-asset/instruckt": "^0.4",
+    "oomphinc/composer-installers-extender": "^2.0"
   },
   "extra": {
+    "installer-types": ["npm-asset", "bower-asset"],
+    "installer-paths": {
+      "web/libraries/{$name}": ["type:npm-asset", "type:bower-asset"]
+    },
     "drush": {
       "services": {
         "drush.services.yml": ">=9"
