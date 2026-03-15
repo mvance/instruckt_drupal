@@ -35,7 +35,11 @@ class InstrucktPlugin extends McpPluginBase {
     private readonly InstrucktStore $store,
     private readonly ConfigFactoryInterface $configFactory,
   ) {
-    parent::__construct($configuration, $plugin_id, $plugin_definition, $currentUser);
+    parent::__construct($configuration, $plugin_id, $plugin_definition);
+    // McpPluginBase stores currentUser via setter in its create() factory, but
+    // InstrucktPlugin overrides create() with a constructor-injection pattern.
+    // Explicitly assign the inherited protected property here.
+    $this->currentUser = $currentUser;
   }
 
   public static function create(

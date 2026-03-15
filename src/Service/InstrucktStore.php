@@ -6,7 +6,6 @@ use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\File\FileSystemInterface;
 use Drupal\Core\Logger\LoggerChannelInterface;
 use Drupal\instruckt_drupal\Exception\InstrucktStorageException;
-use Symfony\Component\Uid\Ulid;
 
 /**
  * Manages annotation and screenshot persistence for instruckt_drupal.
@@ -41,6 +40,26 @@ class InstrucktStore {
 
   private function now(): string {
     return (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->format(\DateTimeInterface::ATOM);
+  }
+
+  /**
+   * Generates a ULID string without requiring symfony/uid.
+   *
+   * Format: 10-char timestamp (ms) + 16-char random, Crockford Base32.
+   */
+  private function generateUlid(): string {
+    $alphabet = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+    $ms = (int) (microtime(TRUE) * 1000);
+    $ts = '';
+    for ($i = 9; $i >= 0; $i--) {
+      $ts = $alphabet[$ms & 0x1F] . $ts;
+      $ms >>= 5;
+    }
+    $rand = '';
+    for ($i = 0; $i < 16; $i++) {
+      $rand .= $alphabet[random_int(0, 31)];
+    }
+    return $ts . $rand;
   }
 
   // ---------------------------------------------------------------------------
@@ -203,7 +222,7 @@ class InstrucktStore {
    * Creates a new annotation. ID is always server-generated as a ULID.
    */
   public function createAnnotation(array $data): ?array {
-    $id = (string) new Ulid();
+    $id = $this->generateUlid();
     $now = $this->now();
 
     $screenshot = NULL;
