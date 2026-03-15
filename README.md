@@ -130,6 +130,10 @@ Module settings are stored in `instruckt_drupal.settings` config. The defaults a
 
 These can be overridden via `drush config-set`, the Config Synchronization UI, or a `$config` override in `settings.php`.
 
+## Future Enhancements
+
+- **Record annotation author server-side.** Add a `created_by` field to the stored annotation schema, populated in `AnnotationController::createAnnotation()` from `$this->currentUser()->getDisplayName()` before the data is passed to `InstrucktStore::createAnnotation()`. This follows the same server-side enrichment pattern as `resolved_by` and requires no changes to the upstream `instruckt` JS library or the annotation POST payload.
+
 ## Credits
 
 `instruckt_drupal` is a Drupal port of the [instruckt](https://github.com/joshcirre/instruckt) JavaScript library and the [instruckt-laravel](https://github.com/joshcirre/instruckt-laravel) Laravel package. All credit for the original concept, UI, and JavaScript implementation goes to the instruckt project contributors:
