@@ -49,6 +49,14 @@ instruckt_drupal.admin.annotations:
   requirements:
     _permission: 'administer instruckt_drupal'
 
+instruckt_drupal.admin.annotation.view:
+  path: '/admin/content/instruckt/{id}'
+  defaults:
+    _controller: '\Drupal\instruckt_drupal\Controller\AdminAnnotationListController::view'
+    _title: 'Annotation'
+  requirements:
+    _permission: 'administer instruckt_drupal'
+
 instruckt_drupal.admin_settings:
   path: '/admin/config/development/instruckt'
   defaults:

@@ -1,0 +1,5 @@
+instruckt_drupal.admin.annotations:
+  title: 'Instruckt Annotations'
+  route_name: instruckt_drupal.admin.annotations
+  base_route: system.admin_content
+  weight: 10

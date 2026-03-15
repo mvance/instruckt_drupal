@@ -145,4 +145,109 @@ class AdminAnnotationListTest extends BrowserTestBase {
     $this->assertSession()->pageTextContains('pending');
   }
 
+  /**
+   * Tests that each row has a link to the annotation detail page.
+   */
+  public function testTableRowLinksToDetailPage(): void {
+    $admin = $this->drupalCreateUser([
+      'administer instruckt_drupal',
+      'access instruckt_drupal toolbar',
+    ]);
+    $this->drupalLogin($admin);
+    $token = $this->getXsrfToken();
+
+    $response = $this->jsonRequest('POST', '/instruckt/annotations', [
+      'x' => 5, 'y' => 5,
+      'comment' => 'Detail link test',
+      'element' => '.bar',
+      'url' => 'http://example.com/detail-link',
+    ], $token);
+    $id = $response['body']['id'] ?? '';
+    $this->assertNotEmpty($id);
+
+    $this->drupalGet('/admin/content/instruckt');
+    $this->assertSession()->statusCodeEquals(200);
+    $this->assertSession()->linkExists($id);
+
+    $this->clickLink($id);
+    $this->assertSession()->statusCodeEquals(200);
+    $this->assertSession()->pageTextContains('Detail link test');
+  }
+
+  /**
+   * Tests that sorting by status reorders rows.
+   */
+  public function testSortByStatus(): void {
+    $admin = $this->drupalCreateUser([
+      'administer instruckt_drupal',
+      'access instruckt_drupal toolbar',
+    ]);
+    $this->drupalLogin($admin);
+    $token = $this->getXsrfToken();
+
+    $this->jsonRequest('POST', '/instruckt/annotations', [
+      'x' => 1, 'y' => 1,
+      'comment' => 'Pending annotation',
+      'element' => '.a',
+      'url' => 'http://example.com/a',
+    ], $token);
+
+    $responseB = $this->jsonRequest('POST', '/instruckt/annotations', [
+      'x' => 2, 'y' => 2,
+      'comment' => 'Resolved annotation',
+      'element' => '.b',
+      'url' => 'http://example.com/b',
+    ], $token);
+    $idB = $responseB['body']['id'] ?? '';
+
+    // Resolve the second annotation.
+    $this->jsonRequest('PATCH', '/instruckt/annotations/' . $idB, ['status' => 'resolved'], $token);
+
+    // Sort ascending by status: "pending" < "resolved" alphabetically, so Pending comes first.
+    $this->drupalGet('/admin/content/instruckt', ['query' => ['order' => 'status', 'sort' => 'asc']]);
+    $this->assertSession()->statusCodeEquals(200);
+    $page = $this->getSession()->getPage()->getContent();
+    $posPending  = strpos($page, 'Pending annotation');
+    $posResolved = strpos($page, 'Resolved annotation');
+    $this->assertNotFalse($posPending);
+    $this->assertNotFalse($posResolved);
+    $this->assertLessThan($posResolved, $posPending, 'Pending should appear before Resolved when sorting status asc');
+  }
+
+  /**
+   * Tests the annotation detail page shows annotation fields.
+   */
+  public function testDetailPageShowsAnnotationFields(): void {
+    $admin = $this->drupalCreateUser([
+      'administer instruckt_drupal',
+      'access instruckt_drupal toolbar',
+    ]);
+    $this->drupalLogin($admin);
+    $token = $this->getXsrfToken();
+
+    $response = $this->jsonRequest('POST', '/instruckt/annotations', [
+      'x' => 3, 'y' => 3,
+      'comment' => 'Detail page comment',
+      'element' => '.detail',
+      'url' => 'http://example.com/detail',
+    ], $token);
+    $id = $response['body']['id'] ?? '';
+    $this->assertNotEmpty($id);
+
+    $this->drupalGet('/admin/content/instruckt/' . $id);
+    $this->assertSession()->statusCodeEquals(200);
+    $this->assertSession()->pageTextContains('Detail page comment');
+    $this->assertSession()->pageTextContains('pending');
+  }
+
+  /**
+   * Tests the detail page returns 404 for an unknown ID.
+   */
+  public function testDetailPageReturns404ForUnknownId(): void {
+    $admin = $this->drupalCreateUser(['administer instruckt_drupal']);
+    $this->drupalLogin($admin);
+    $this->drupalGet('/admin/content/instruckt/BADID-DOES-NOT-EXIST');
+    $this->assertSession()->statusCodeEquals(404);
+  }
+
 }
