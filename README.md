@@ -80,11 +80,13 @@ composer config repositories.asset-packagist composer https://asset-packagist.or
 Require the installer extender and allow its plugin:
 
 ```bash
-composer require oomphinc/composer-installers-extender:^2.0
 composer config allow-plugins.oomphinc/composer-installers-extender true
+composer require oomphinc/composer-installers-extender:^2.0
 ```
 
-Add the `npm-asset` installer path to the `extra` section of your root `composer.json`:
+Add the `npm-asset` installer path to the `extra` section of your root `composer.json`.
+
+> **Note:** There is no `composer config` command for the `extra` block — you must edit `composer.json` directly.
 
 ```json
 "extra": {
@@ -261,6 +263,17 @@ The agent will discover three tools. The `drupal/mcp` module prefixes all tool n
 ### Verifying the installation
 
 Visit `/admin/reports/status` and search for "Instruckt" — the JS library row should show **Installed**. If it shows an error, verify that `web/libraries/instruckt/dist/instruckt.iife.js` exists and that `file_private_path` is set in `settings.php`.
+
+To confirm the MCP endpoint is returning the instruckt tools, send a `tools/list` request:
+
+```bash
+curl -s -X POST https://your-site.example.com/mcp/post \
+  -H "Authorization: Basic <base64-encoded-token>" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'
+```
+
+The response should include `instruckt-drupal_instruckt_get_all_pending`, `instruckt-drupal_instruckt_get_screenshot`, and `instruckt-drupal_instruckt_resolve` in the `tools` array. If the array is empty, verify that the Instruckt Drupal plugin is enabled at `/admin/config/mcp/plugins` and that the authenticated token user has the `use mcp server` permission.
 
 ## Configuration
 
