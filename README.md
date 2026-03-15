@@ -131,6 +131,52 @@ Module settings can be managed through the admin UI at `/admin/config/developmen
 
 These can also be overridden via `drush config-set`, the Config Synchronization UI, or a `$config` override in `settings.php`.
 
+## Running Tests
+
+Tests require a running DDEV environment and the private filesystem configured.
+
+Run all tests in parallel (default 4 workers):
+
+    ddev test
+
+Specify a worker count explicitly:
+
+    ddev test 4
+
+To find the optimal worker count for your machine, run the one-time benchmark
+(~9–12 min):
+
+    ddev benchmark-tests
+
+Pick the process count with the shortest wall time and no timeout failures,
+then update the default in `.ddev/commands/web/test`.
+
+**OOM / hang mitigation:** each worker enforces a 512 MB PHP memory limit
+(`.ddev/php/memory.ini`). If tests hang or fail with memory errors, reduce
+the process count or increase Docker Desktop's memory allocation in its settings.
+
+### Mutation Testing
+
+[Infection](https://infection.github.io/) measures test-suite effectiveness by
+injecting synthetic bugs and verifying the tests kill them.
+
+Run mutation tests (default 4 threads):
+
+    ddev mutate
+
+Or with an explicit thread count:
+
+    ddev mutate 2
+
+After the first run, review `infection.log` (text) or `infection.html` (browser)
+for escaped mutants. Common follow-up actions:
+- Add assertions to kill escaped mutants.
+- Set `minMsi` / `minCoveredMsi` in `infection.json5` once you have a stable
+  baseline to enforce in CI.
+
+**Scope:** targets Unit tests only (fast). Kernel/Functional tests are excluded
+to keep each mutant run sub-second.
+
 ## Future Enhancements
 
 - **Record annotation author server-side.** Add a `created_by` field to the stored annotation schema, populated in `AnnotationController::createAnnotation()` from `$this->currentUser()->getDisplayName()` before the data is passed to `InstrucktStore::createAnnotation()`. This follows the same server-side enrichment pattern as `resolved_by` and requires no changes to the upstream `instruckt` JS library or the annotation POST payload.
