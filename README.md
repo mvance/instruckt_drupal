@@ -19,11 +19,11 @@ AI coding agents (Claude, Cursor, etc.) connect to the site's [drupal/mcp](https
 
 | Tool (as exposed at the MCP endpoint) | Description |
 |---------------------------------------|-------------|
-| `instruckt-drupal_instruckt_get_all_pending` | Retrieve all pending annotations with full metadata |
-| `instruckt-drupal_instruckt_get_screenshot` | Get the base64-encoded screenshot for an annotation |
-| `instruckt-drupal_instruckt_resolve` | Mark an annotation as resolved by the agent |
+| `instrucktdrupal_get_all_pending` | Retrieve all pending annotations with full metadata |
+| `instrucktdrupal_get_screenshot` | Get the base64-encoded screenshot for an annotation |
+| `instrucktdrupal_resolve` | Mark an annotation as resolved by the agent |
 
-> **Note:** The `drupal/mcp` module prefixes every tool name with the plugin ID (`instruckt-drupal`), so the names above are what appear in `tools/list` and must be used in `tools/call` requests.
+> **Note:** The `drupal/mcp` module prefixes every tool name with the plugin ID (`instrucktdrupal`), so the names above are what appear in `tools/list` and must be used in `tools/call` requests.
 
 ## Requirements
 
@@ -141,7 +141,7 @@ activates when debug HTML comments are present in the DOM.
 
 The template name (`component`) and path (`source_file`) appear in the annotation's detail
 view at `/admin/content/instruckt/{id}` and are included in the JSON returned by the
-`instruckt-drupal_instruckt_get_all_pending` MCP tool.
+`instrucktdrupal_get_all_pending` MCP tool.
 
 > **Note:** Enable Twig debug only in development environments. It adds HTML comments to
 > every page response and degrades performance on production sites.
@@ -173,7 +173,7 @@ Without valid credentials, or if the authenticated user lacks the `use mcp serve
 ```json
 {
   "mcpServers": {
-    "instruckt-drupal": {
+    "instrucktdrupal": {
       "type": "http",
       "url": "https://your-site.example.com/mcp/post",
       "headers": {
@@ -189,7 +189,7 @@ Without valid credentials, or if the authenticated user lacks the `use mcp serve
 ```json
 {
   "mcpServers": {
-    "instruckt-drupal": {
+    "instrucktdrupal": {
       "type": "streamable-http",
       "url": "https://your-site.example.com/mcp/post",
       "headers": {
@@ -206,9 +206,9 @@ Without valid credentials, or if the authenticated user lacks the `use mcp serve
 
 The agent will discover three tools. The `drupal/mcp` module prefixes all tool names with the plugin ID, so they appear as:
 
-- **`instruckt-drupal_instruckt_get_all_pending`** — no arguments; returns all pending annotations as JSON
-- **`instruckt-drupal_instruckt_get_screenshot`** — `annotation_id` (ULID string); returns the screenshot as a base64 image
-- **`instruckt-drupal_instruckt_resolve`** — `id` (ULID string); marks the annotation resolved and deletes its screenshot
+- **`instrucktdrupal_get_all_pending`** — no arguments; returns all pending annotations as JSON
+- **`instrucktdrupal_get_screenshot`** — `annotation_id` (ULID string); returns the screenshot as a base64 image
+- **`instrucktdrupal_resolve`** — `id` (ULID string); marks the annotation resolved and deletes its screenshot
 
 ### Verifying the installation
 
@@ -223,7 +223,7 @@ curl -s -X POST https://your-site.example.com/mcp/post \
   -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'
 ```
 
-The response should include `instruckt-drupal_instruckt_get_all_pending`, `instruckt-drupal_instruckt_get_screenshot`, and `instruckt-drupal_instruckt_resolve` in the `tools` array. If the array is empty, verify that the Instruckt Drupal plugin is enabled at `/admin/config/mcp/plugins` and that the authenticated token user has the `use mcp server` permission.
+The response should include `instrucktdrupal_get_all_pending`, `instrucktdrupal_get_screenshot`, and `instrucktdrupal_resolve` in the `tools` array. If the array is empty, verify that the Instruckt Drupal plugin is enabled at `/admin/config/mcp/plugins` and that the authenticated token user has the `use mcp server` permission.
 
 ## Troubleshooting
 

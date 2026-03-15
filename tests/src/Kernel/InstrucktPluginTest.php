@@ -48,8 +48,8 @@ class InstrucktPluginTest extends KernelTestBase {
 
     return new InstrucktPlugin(
       [],
-      'instruckt-drupal',
-      ['id' => 'instruckt-drupal', 'label' => 'Instruckt Drupal', 'description' => 'Test'],
+      'instrucktdrupal',
+      ['id' => 'instrucktdrupal', 'label' => 'Instruckt Drupal', 'description' => 'Test'],
       $currentUser,
       $store,
       $configFactory,
@@ -76,8 +76,8 @@ class InstrucktPluginTest extends KernelTestBase {
 
     return new InstrucktPlugin(
       [],
-      'instruckt-drupal',
-      ['id' => 'instruckt-drupal', 'label' => 'Instruckt Drupal', 'description' => 'Test'],
+      'instrucktdrupal',
+      ['id' => 'instrucktdrupal', 'label' => 'Instruckt Drupal', 'description' => 'Test'],
       $currentUser,
       $store,
       $configFactory,
@@ -105,9 +105,9 @@ class InstrucktPluginTest extends KernelTestBase {
   public function testGetToolNamesMatchSpec(): void {
     $tools = $this->buildPlugin()->getTools();
     $names = array_map(fn(Tool $t) => $t->name, $tools);
-    $this->assertContains('instruckt_get_all_pending', $names);
-    $this->assertContains('instruckt_get_screenshot', $names);
-    $this->assertContains('instruckt_resolve', $names);
+    $this->assertContains('get_all_pending', $names);
+    $this->assertContains('get_screenshot', $names);
+    $this->assertContains('resolve', $names);
   }
 
   /**
@@ -116,7 +116,7 @@ class InstrucktPluginTest extends KernelTestBase {
   public function testGetAllPendingToolIsReadOnly(): void {
     $tools = $this->buildPlugin()->getTools();
     foreach ($tools as $tool) {
-      if ($tool->name === 'instruckt_get_all_pending') {
+      if ($tool->name === 'get_all_pending') {
         $this->assertTrue($tool->annotations->readOnlyHint ?? FALSE);
       }
     }
@@ -128,7 +128,7 @@ class InstrucktPluginTest extends KernelTestBase {
   public function testResolveToolIsDestructive(): void {
     $tools = $this->buildPlugin()->getTools();
     foreach ($tools as $tool) {
-      if ($tool->name === 'instruckt_resolve') {
+      if ($tool->name === 'resolve') {
         $this->assertTrue($tool->annotations->destructiveHint ?? FALSE);
       }
     }
@@ -139,15 +139,13 @@ class InstrucktPluginTest extends KernelTestBase {
   // ---------------------------------------------------------------------------
 
   /**
-   * Plugin ID must satisfy drupal/mcp validation (letters, numbers, hyphens only).
-   *
-   * Underscores cause an Internal Error at runtime on every MCP request.
+   * Plugin ID must satisfy drupal/mcp validation (letters, numbers, underscores only).
    */
   public function testPluginIdIsValidMcpId(): void {
     $this->assertMatchesRegularExpression(
       '/^[a-zA-Z0-9-]+$/',
       $this->buildPlugin()->getPluginId(),
-      'Plugin ID must contain only letters, numbers, and hyphens (drupal/mcp validation rule).',
+      'Plugin ID must contain only letters, numbers, and hyphens.',
     );
   }
 
@@ -165,9 +163,9 @@ class InstrucktPluginTest extends KernelTestBase {
       $plugin->getTools(),
     );
     $this->assertSame([
-      'instruckt-drupal_instruckt_get_all_pending',
-      'instruckt-drupal_instruckt_get_screenshot',
-      'instruckt-drupal_instruckt_resolve',
+      'instrucktdrupal_get_all_pending',
+      'instrucktdrupal_get_screenshot',
+      'instrucktdrupal_resolve',
     ], $actual);
   }
 
@@ -179,7 +177,7 @@ class InstrucktPluginTest extends KernelTestBase {
    * @covers ::executeTool
    */
   public function testExecuteToolWhenDisabledReturnsDisabledMessage(): void {
-    $result = $this->buildPlugin(FALSE)->executeTool('instruckt_get_all_pending', []);
+    $result = $this->buildPlugin(FALSE)->executeTool('get_all_pending', []);
     $this->assertSame('text', $result[0]['type']);
     $this->assertStringContainsString('disabled', strtolower($result[0]['text']));
   }
@@ -188,7 +186,7 @@ class InstrucktPluginTest extends KernelTestBase {
    * @covers ::executeTool
    */
   public function testExecuteToolWithoutPermissionReturnsAccessDenied(): void {
-    $result = $this->buildPlugin(TRUE, FALSE)->executeTool('instruckt_get_all_pending', []);
+    $result = $this->buildPlugin(TRUE, FALSE)->executeTool('get_all_pending', []);
     $this->assertSame('text', $result[0]['type']);
     $this->assertStringContainsString('Access denied', $result[0]['text']);
   }
@@ -205,7 +203,7 @@ class InstrucktPluginTest extends KernelTestBase {
   }
 
   // ---------------------------------------------------------------------------
-  // instruckt_get_all_pending
+  // get_all_pending
   // ---------------------------------------------------------------------------
 
   /**
@@ -215,21 +213,21 @@ class InstrucktPluginTest extends KernelTestBase {
     $annotations = [
       ['id' => self::VALID_ULID, 'comment' => 'Test', 'status' => 'pending'],
     ];
-    $result = $this->buildPlugin(TRUE, TRUE, $annotations)->executeTool('instruckt_get_all_pending', []);
+    $result = $this->buildPlugin(TRUE, TRUE, $annotations)->executeTool('get_all_pending', []);
     $this->assertSame('text', $result[0]['type']);
     $decoded = json_decode($result[0]['text'], TRUE);
     $this->assertSame(1, $decoded['count']);
   }
 
   // ---------------------------------------------------------------------------
-  // instruckt_get_screenshot
+  // get_screenshot
   // ---------------------------------------------------------------------------
 
   /**
    * @covers ::executeTool
    */
   public function testGetScreenshotMissingAnnotationIdReturnsError(): void {
-    $result = $this->buildPlugin()->executeTool('instruckt_get_screenshot', []);
+    $result = $this->buildPlugin()->executeTool('get_screenshot', []);
     $this->assertSame('text', $result[0]['type']);
     $this->assertSame('annotation_id is required.', $result[0]['text']);
   }
@@ -238,7 +236,7 @@ class InstrucktPluginTest extends KernelTestBase {
    * @covers ::executeTool
    */
   public function testGetScreenshotInvalidUlidReturnsError(): void {
-    $result = $this->buildPlugin()->executeTool('instruckt_get_screenshot', ['annotation_id' => 'not-a-valid-ulid!!']);
+    $result = $this->buildPlugin()->executeTool('get_screenshot', ['annotation_id' => 'not-a-valid-ulid!!']);
     $this->assertSame('text', $result[0]['type']);
     $this->assertSame('Invalid annotation_id format.', $result[0]['text']);
   }
@@ -248,7 +246,7 @@ class InstrucktPluginTest extends KernelTestBase {
    */
   public function testGetScreenshotAnnotationNotFoundReturnsError(): void {
     // Store returns no annotations (default empty array in buildPlugin).
-    $result = $this->buildPlugin()->executeTool('instruckt_get_screenshot', ['annotation_id' => self::VALID_ULID]);
+    $result = $this->buildPlugin()->executeTool('get_screenshot', ['annotation_id' => self::VALID_ULID]);
     $this->assertSame('text', $result[0]['type']);
     $this->assertSame('Annotation not found.', $result[0]['text']);
   }
@@ -263,7 +261,7 @@ class InstrucktPluginTest extends KernelTestBase {
     ]);
 
     $result = $this->buildPluginWithStore($store)
-      ->executeTool('instruckt_get_screenshot', ['annotation_id' => self::VALID_ULID]);
+      ->executeTool('get_screenshot', ['annotation_id' => self::VALID_ULID]);
     $this->assertSame('text', $result[0]['type']);
     $this->assertSame('Annotation has no screenshot.', $result[0]['text']);
   }
@@ -279,7 +277,7 @@ class InstrucktPluginTest extends KernelTestBase {
     $store->method('getScreenshotRealPath')->willReturn(NULL);
 
     $result = $this->buildPluginWithStore($store)
-      ->executeTool('instruckt_get_screenshot', ['annotation_id' => self::VALID_ULID]);
+      ->executeTool('get_screenshot', ['annotation_id' => self::VALID_ULID]);
     $this->assertSame('text', $result[0]['type']);
     $this->assertSame('Screenshot file not found on disk.', $result[0]['text']);
   }
@@ -298,7 +296,7 @@ class InstrucktPluginTest extends KernelTestBase {
     $store->method('getScreenshotRealPath')->willReturn($tmpFile);
 
     $result = $this->buildPluginWithStore($store)
-      ->executeTool('instruckt_get_screenshot', ['annotation_id' => self::VALID_ULID]);
+      ->executeTool('get_screenshot', ['annotation_id' => self::VALID_ULID]);
 
     unlink($tmpFile);
 
@@ -308,14 +306,14 @@ class InstrucktPluginTest extends KernelTestBase {
   }
 
   // ---------------------------------------------------------------------------
-  // instruckt_resolve
+  // resolve
   // ---------------------------------------------------------------------------
 
   /**
    * @covers ::executeTool
    */
   public function testResolveMissingIdReturnsError(): void {
-    $result = $this->buildPlugin()->executeTool('instruckt_resolve', []);
+    $result = $this->buildPlugin()->executeTool('resolve', []);
     $this->assertSame('text', $result[0]['type']);
     $this->assertSame('id is required.', $result[0]['text']);
   }
@@ -324,7 +322,7 @@ class InstrucktPluginTest extends KernelTestBase {
    * @covers ::executeTool
    */
   public function testResolveInvalidUlidReturnsError(): void {
-    $result = $this->buildPlugin()->executeTool('instruckt_resolve', ['id' => 'not-a-valid-ulid!!']);
+    $result = $this->buildPlugin()->executeTool('resolve', ['id' => 'not-a-valid-ulid!!']);
     $this->assertSame('text', $result[0]['type']);
     $this->assertSame('Invalid id format.', $result[0]['text']);
   }
@@ -337,7 +335,7 @@ class InstrucktPluginTest extends KernelTestBase {
     $store->method('updateAnnotation')->willReturn(FALSE);
 
     $result = $this->buildPluginWithStore($store)
-      ->executeTool('instruckt_resolve', ['id' => self::VALID_ULID]);
+      ->executeTool('resolve', ['id' => self::VALID_ULID]);
     $this->assertSame('text', $result[0]['type']);
     $this->assertSame('Storage error resolving annotation.', $result[0]['text']);
   }
@@ -350,7 +348,7 @@ class InstrucktPluginTest extends KernelTestBase {
     $store->method('updateAnnotation')->willReturn(NULL);
 
     $result = $this->buildPluginWithStore($store)
-      ->executeTool('instruckt_resolve', ['id' => self::VALID_ULID]);
+      ->executeTool('resolve', ['id' => self::VALID_ULID]);
     $this->assertSame('text', $result[0]['type']);
     $this->assertSame('Annotation not found.', $result[0]['text']);
   }
@@ -370,7 +368,7 @@ class InstrucktPluginTest extends KernelTestBase {
       ->willReturn($resolved);
 
     $result = $this->buildPluginWithStore($store)
-      ->executeTool('instruckt_resolve', ['id' => self::VALID_ULID]);
+      ->executeTool('resolve', ['id' => self::VALID_ULID]);
     $this->assertSame('text', $result[0]['type']);
     $decoded = json_decode($result[0]['text'], TRUE);
     $this->assertSame('resolved', $decoded['status']);

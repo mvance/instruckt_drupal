@@ -18,6 +18,18 @@ function instruckt_drupal_install() {
     $screenshots_path,
     \Drupal\Core\File\FileSystemInterface::CREATE_DIRECTORY
   );
+
+  // Enable the instruckt_drupal plugin in mcp.settings.
+  $mcp_config = \Drupal::configFactory()->getEditable('mcp.settings');
+  $mcp_config->set('plugins.instrucktdrupal.enabled', TRUE);
+  $mcp_config->save();
+
+  // Grant toolbar access to authenticated users.
+  $role = \Drupal\user\Entity\Role::load('authenticated');
+  if ($role) {
+    $role->grantPermission('access instruckt_drupal toolbar');
+    $role->save();
+  }
 }
 
 /**
@@ -133,6 +145,20 @@ function instruckt_drupal_requirements($phase) {
  * continuity. To fully reset, delete the directory manually.
  */
 function instruckt_drupal_uninstall() {
+  // Remove instruckt_drupal plugin settings from mcp.settings.
+  $mcp_config = \Drupal::configFactory()->getEditable('mcp.settings');
+  $plugins = $mcp_config->get('plugins') ?? [];
+  unset($plugins['instrucktdrupal']);
+  $mcp_config->set('plugins', $plugins);
+  $mcp_config->save();
+
+  // Revoke the toolbar permission from authenticated.
+  $role = \Drupal\user\Entity\Role::load('authenticated');
+  if ($role && $role->hasPermission('access instruckt_drupal toolbar')) {
+    $role->revokePermission('access instruckt_drupal toolbar');
+    $role->save();
+  }
+
   // No-op: data is intentionally preserved. Document in README.
   \Drupal::messenger()->addWarning(t(
     'Instruckt data at private://_instruckt/ was preserved. Delete it manually if a full reset is desired.'

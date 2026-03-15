@@ -16,12 +16,12 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  * MCP plugin exposing instruckt annotation tools.
  *
  * Provides three MCP tools:
- *   - instruckt_get_all_pending  (read-only)
- *   - instruckt_get_screenshot   (read-only)
- *   - instruckt_resolve          (destructive)
+ *   - get_all_pending  (read-only)
+ *   - get_screenshot   (read-only)
+ *   - resolve          (destructive)
  */
 #[Mcp(
-  id: 'instruckt-drupal',
+  id: 'instrucktdrupal',
   name: new TranslatableMarkup('Instruckt Drupal'),
   description: new TranslatableMarkup('Tools for reading and resolving Instruckt annotations.'),
 )]
@@ -81,13 +81,13 @@ class InstrucktPlugin extends McpPluginBase {
   public function getTools(): array {
     return [
       new Tool(
-        name: 'instruckt_get_all_pending',
+        name: 'get_all_pending',
         description: 'Retrieve all pending Instruckt annotations with full metadata.',
         inputSchema: ['type' => 'object', 'properties' => new \stdClass()],
         annotations: new ToolAnnotations(readOnlyHint: TRUE),
       ),
       new Tool(
-        name: 'instruckt_get_screenshot',
+        name: 'get_screenshot',
         description: 'Get the base64-encoded screenshot for an annotation by its ID.',
         inputSchema: [
           'type'       => 'object',
@@ -102,7 +102,7 @@ class InstrucktPlugin extends McpPluginBase {
         annotations: new ToolAnnotations(readOnlyHint: TRUE),
       ),
       new Tool(
-        name: 'instruckt_resolve',
+        name: 'resolve',
         description: 'Mark an annotation as resolved by the agent. Deletes its screenshot.',
         inputSchema: [
           'type'       => 'object',
@@ -140,9 +140,9 @@ class InstrucktPlugin extends McpPluginBase {
     }
 
     return match ($toolId) {
-      'instruckt_get_all_pending' => $this->getAllPending(),
-      'instruckt_get_screenshot'  => $this->getScreenshot((array) $arguments),
-      'instruckt_resolve'         => $this->resolve((array) $arguments),
+      'get_all_pending' => $this->getAllPending(),
+      'get_screenshot'  => $this->getScreenshot((array) $arguments),
+      'resolve'         => $this->resolve((array) $arguments),
       default => [['type' => 'text', 'text' => "Unknown tool ID: $toolId"]],
     };
   }

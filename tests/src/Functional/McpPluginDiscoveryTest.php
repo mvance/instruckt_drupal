@@ -61,7 +61,7 @@ class McpPluginDiscoveryTest extends BrowserTestBase {
 
     $manager = $container->get($managerServiceId);
     $definitions = $manager->getDefinitions();
-    $this->assertArrayHasKey('instruckt-drupal', $definitions);
+    $this->assertArrayHasKey('instrucktdrupal', $definitions);
   }
 
   /**
@@ -76,8 +76,8 @@ class McpPluginDiscoveryTest extends BrowserTestBase {
 
     $plugin = new InstrucktPlugin(
       [],
-      'instruckt-drupal',
-      ['id' => 'instruckt-drupal', 'label' => 'Instruckt Drupal', 'description' => ''],
+      'instrucktdrupal',
+      ['id' => 'instrucktdrupal', 'label' => 'Instruckt Drupal', 'description' => ''],
       $currentUser,
       $store,
       $configFactory,
@@ -87,9 +87,9 @@ class McpPluginDiscoveryTest extends BrowserTestBase {
     $this->assertCount(3, $tools);
 
     $names = array_map(fn(Tool $t) => $t->name, $tools);
-    $this->assertContains('instruckt_get_all_pending', $names);
-    $this->assertContains('instruckt_get_screenshot', $names);
-    $this->assertContains('instruckt_resolve', $names);
+    $this->assertContains('get_all_pending', $names);
+    $this->assertContains('get_screenshot', $names);
+    $this->assertContains('resolve', $names);
   }
 
 }

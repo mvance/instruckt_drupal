@@ -1,0 +1,9 @@
+services:
+  instruckt_drupal.commands:
+    class: Drupal\instruckt_drupal\Commands\InstrucktCommands
+    arguments:
+      - '@config.factory'
+      - '@entity_type.manager'
+      - '@key.repository'
+    tags:
+      - { name: drush.command }

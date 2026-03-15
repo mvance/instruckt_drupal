@@ -6,5 +6,12 @@
   "require": {
     "drupal/mcp": "^1.2",
     "npm-asset/instruckt": "^0.4"
+  },
+  "extra": {
+    "drush": {
+      "services": {
+        "drush.services.yml": ">=9"
+      }
+    }
   }
 }
