@@ -1,8 +1,14 @@
 {
   "name": "drupal/instruckt_drupal",
-  "description": "Visual feedback toolbar for AI coding agents",
+  "description": "Visual feedback toolbar that works with AI coding agents.",
   "type": "drupal-module",
   "license": "GPL-2.0-or-later",
+  "authors": [
+    {
+      "name": "Matt Vance",
+      "email": "mvance@pobox.com"
+    }
+  ],
   "require": {
     "drupal/mcp": "^1.2",
     "npm-asset/instruckt": "^0.4"
