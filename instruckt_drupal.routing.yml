@@ -40,3 +40,11 @@ instruckt_drupal.screenshot:
   methods: [GET]
   requirements:
     _permission: 'access instruckt_drupal toolbar'
+
+instruckt_drupal.admin_settings:
+  path: '/admin/config/development/instruckt'
+  defaults:
+    _form: '\Drupal\instruckt_drupal\Form\SettingsForm'
+    _title: 'Instruckt settings'
+  requirements:
+    _permission: 'administer instruckt_drupal'

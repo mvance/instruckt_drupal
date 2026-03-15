@@ -48,8 +48,11 @@ function instruckt_drupal_library_info_build(): array {
  * Implements hook_help().
  */
 function instruckt_drupal_help($route_name, RouteMatchInterface $route_match) {
-  if ($route_name === 'help.page.instruckt_drupal') {
-    return '<p>' . t('Visual feedback toolbar for AI coding agents.') . '</p>';
+  switch ($route_name) {
+    case 'help.page.instruckt_drupal':
+      return '<p>' . t('Visual feedback toolbar for AI coding agents.') . '</p>';
+    case 'instruckt_drupal.admin_settings':
+      return '<p>' . t('Configure the Instruckt visual feedback toolbar. Changes take effect immediately on all front-end pages.') . '</p>';
   }
 }
 

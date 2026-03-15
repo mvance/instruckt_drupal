@@ -120,15 +120,16 @@ Visit `/admin/reports/status` and search for "Instruckt" — the JS library row 
 
 ## Configuration
 
-Module settings are stored in `instruckt_drupal.settings` config. The defaults are:
+Module settings can be managed through the admin UI at `/admin/config/development/instruckt` (requires the `administer instruckt_drupal` permission). Settings are stored in `instruckt_drupal.settings` config. The defaults are:
 
 | Key | Default | Description |
 |-----|---------|-------------|
 | `enabled` | `true` | Master on/off switch for the toolbar |
 | `storage_path` | `private://_instruckt` | Where annotations and screenshots are stored |
 | `max_screenshot_size` | `5242880` (5 MB) | Maximum uploaded screenshot size in bytes |
+| `allowed_screenshot_extensions` | `['png', 'svg']` | Permitted screenshot file formats |
 
-These can be overridden via `drush config-set`, the Config Synchronization UI, or a `$config` override in `settings.php`.
+These can also be overridden via `drush config-set`, the Config Synchronization UI, or a `$config` override in `settings.php`.
 
 ## Future Enhancements
 
