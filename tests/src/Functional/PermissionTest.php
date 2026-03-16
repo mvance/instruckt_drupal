@@ -3,6 +3,7 @@
 namespace Drupal\Tests\instruckt_drupal\Functional;
 
 use Drupal\Tests\BrowserTestBase;
+use Drupal\user\Entity\Role;
 
 /**
  * Tests that all instruckt routes enforce access permissions.
@@ -40,13 +41,13 @@ class PermissionTest extends BrowserTestBase {
   /**
    * {@inheritdoc}
    *
-   * hook_install() grants 'access instruckt_drupal toolbar' to the
-   * authenticated role. Revoke it here so tests that create unpermitted users
-   * are not confounded by the role-level grant.
+   * The hook_install() callback grants 'access instruckt_drupal toolbar' to
+   * the authenticated role. Revoke it here so tests that create users without
+   * the permission are not confounded by the role-level grant.
    */
   protected function setUp(): void {
     parent::setUp();
-    $role = \Drupal\user\Entity\Role::load('authenticated');
+    $role = Role::load('authenticated');
     if ($role && $role->hasPermission('access instruckt_drupal toolbar')) {
       $role->revokePermission('access instruckt_drupal toolbar');
       $role->save();

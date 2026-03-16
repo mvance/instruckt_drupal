@@ -1,0 +1,29 @@
+{
+  "version": "0.2",
+  "language": "en",
+  "ignorePaths": [
+    "vendor/**",
+    "web/**",
+    "node_modules/**"
+  ],
+  "words": [
+    "hjkmnp",
+    "instruktdrupal",
+    "joshcirre",
+    "livewire",
+    "mytheme",
+    "navigations",
+    "ndektsv",
+    "oomphinc",
+    "penmissioned",
+    "purvis",
+    "rrrtfq",
+    "sgaesser",
+    "snapdom",
+    "streamable",
+    "subdirs",
+    "toctou",
+    "unpermitted",
+    "whitelist"
+  ]
+}

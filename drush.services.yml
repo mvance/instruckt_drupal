@@ -7,5 +7,6 @@ services:
       - '@key.repository'
       - '@file_system'
       - '@stream_wrapper_manager'
+      - '%app.root%'
     tags:
       - { name: drush.command }

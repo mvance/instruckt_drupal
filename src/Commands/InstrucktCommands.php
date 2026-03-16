@@ -22,6 +22,7 @@ class InstrucktCommands extends DrushCommands {
     private readonly KeyRepositoryInterface $keyRepository,
     private readonly FileSystemInterface $fileSystem,
     private readonly StreamWrapperManagerInterface $streamWrapperManager,
+    private readonly string $appRoot,
   ) {
     parent::__construct();
   }
@@ -32,7 +33,8 @@ class InstrucktCommands extends DrushCommands {
    * Grants 'use mcp server' to a role, creates an auth token key, and
    * configures mcp.settings token authentication. Safe to re-run.
    *
-   * @param array $options An associative array of options.
+   * @param array $options
+   *   An associative array of options.
    *
    * @command instruckt:setup
    * @option role  Drupal role to grant 'use mcp server'
@@ -42,17 +44,19 @@ class InstrucktCommands extends DrushCommands {
    * @usage drush instruckt:setup --role=editor --user=2 --key-id=my_mcp_key
    * @aliases instruckt-setup
    */
-  public function setup(array $options = [
-    'role'   => 'authenticated',
-    'user'   => '1',
-    'key-id' => 'instruckt_mcp_token',
-  ]): void {
+  public function setup(
+    array $options = [
+      'role'   => 'authenticated',
+      'user'   => '1',
+      'key-id' => 'instruckt_mcp_token',
+    ],
+  ): void {
     // 0. Bootstrap private filesystem if not yet configured.
     if ($this->streamWrapperManager->isValidScheme('private')) {
       $this->output()->writeln('[skip] Private filesystem already configured.');
     }
     else {
-      $drupalRoot = \Drupal::root();
+      $drupalRoot = $this->appRoot;
       $targetPath = dirname($drupalRoot) . '/private';
 
       // Create the directory outside web root (best practice).
@@ -85,15 +89,13 @@ class InstrucktCommands extends DrushCommands {
       }
     }
 
-    // Create storage directories using native mkdir on the resolved FS path.
-    // (The private:// stream wrapper is not registered in this process even
-    // after writing settings.php, so we resolve the path directly.)
-    $privateBase = \Drupal::config('instruckt_drupal.settings')->get('storage_path');
-    // Resolve private:// to an FS path via config or fall back to the computed path.
+    // Create storage directories. Resolve private:// to a filesystem path
+    // directly — the stream wrapper may not be registered in this process
+    // even after writing settings.php.
     $resolvedPrivate = $this->streamWrapperManager->isValidScheme('private')
-      ? $this->fileSystem->realpath('private://') ?: (dirname(\Drupal::root()) . '/private')
-      : dirname(\Drupal::root()) . '/private';
-    $instrucktDir   = $resolvedPrivate . '/_instruckt';
+      ? $this->fileSystem->realpath('private://') ?: (dirname($this->appRoot) . '/private')
+      : dirname($this->appRoot) . '/private';
+    $instrucktDir = $resolvedPrivate . '/_instruckt';
     $screenshotsDir = $instrucktDir . '/screenshots';
     foreach ([$instrucktDir, $screenshotsDir] as $dir) {
       if (!is_dir($dir)) {

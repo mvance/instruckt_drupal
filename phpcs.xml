@@ -5,6 +5,9 @@
   <file>src</file>
   <file>tests/src</file>
 
+  <!-- JS files are linted by eslint; exclude them from PHP-centric phpcs rules. -->
+  <exclude-pattern>*/js/*</exclude-pattern>
+
   <rule ref="Drupal"/>
   <rule ref="DrupalPractice"/>
 

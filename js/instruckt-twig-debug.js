@@ -19,8 +19,6 @@
  */
 
 (function (Drupal) {
-  'use strict';
-
   /**
    * Extracts a template name from a full Twig template path.
    *
@@ -31,7 +29,7 @@
    */
   function componentFromPath(path) {
     // Grab the basename, strip the .html.twig (or .twig) extension.
-    var base = path.split('/').pop() || path;
+    const base = path.split('/').pop() || path;
     return base.replace(/\.html\.twig$/, '').replace(/\.twig$/, '');
   }
 
@@ -43,25 +41,26 @@
    *   Count of elements that were annotated (0 means debug mode is off).
    */
   function scanTwigDebugComments() {
-    var count = 0;
-    var walker = document.createTreeWalker(
+    let count = 0;
+    const walker = document.createTreeWalker(
       document.body,
       NodeFilter.SHOW_COMMENT,
-      null,
-      false
     );
 
-    var node;
-    while ((node = walker.nextNode()) !== null) {
-      var text = node.nodeValue || '';
-      var match = text.match(/BEGIN OUTPUT from '([^']+)'/);
+    for (
+      let node = walker.nextNode();
+      node !== null;
+      node = walker.nextNode()
+    ) {
+      const text = node.nodeValue || '';
+      const match = text.match(/BEGIN OUTPUT from '([^']+)'/);
       if (!match) {
         continue;
       }
-      var templatePath = match[1];
+      const templatePath = match[1];
 
       // Walk forward through siblings to find the next element node.
-      var sibling = node.nextSibling;
+      let sibling = node.nextSibling;
       while (sibling && sibling.nodeType !== Node.ELEMENT_NODE) {
         sibling = sibling.nextSibling;
       }
@@ -70,7 +69,10 @@
       }
 
       sibling.setAttribute('data-drupal-twig', templatePath);
-      sibling.setAttribute('data-drupal-twig-component', componentFromPath(templatePath));
+      sibling.setAttribute(
+        'data-drupal-twig-component',
+        componentFromPath(templatePath),
+      );
       count++;
     }
 
@@ -84,13 +86,16 @@
    * @return {{framework: string, component: string, source_file: string}|null}
    */
   function getTwigContext(el) {
-    var current = el;
+    let current = el;
     while (current) {
-      var path = current.getAttribute && current.getAttribute('data-drupal-twig');
+      const path =
+        current.getAttribute && current.getAttribute('data-drupal-twig');
       if (path) {
         return {
           framework: 'twig',
-          component: current.getAttribute('data-drupal-twig-component') || componentFromPath(path),
+          component:
+            current.getAttribute('data-drupal-twig-component') ||
+            componentFromPath(path),
           source_file: path,
         };
       }
@@ -106,33 +111,37 @@
    *   The instruckt base endpoint, e.g. '/instruckt'.
    */
   function installFetchInterceptor(endpoint) {
-    var annotationsUrl = endpoint + '/annotations';
-    var originalFetch = window.fetch;
+    const annotationsUrl = endpoint + '/annotations';
+    const originalFetch = window.fetch;
 
     window.fetch = function (input, init) {
-      var url = typeof input === 'string' ? input : (input && input.url) || '';
+      const url =
+        typeof input === 'string' ? input : (input && input.url) || '';
 
       // Only intercept POST requests to the annotations endpoint.
-      if (url.indexOf(annotationsUrl) === -1 || !init || (init.method || '').toUpperCase() !== 'POST') {
-        return originalFetch.apply(this, arguments);
+      if (
+        url.indexOf(annotationsUrl) === -1 ||
+        !init ||
+        (init.method || '').toUpperCase() !== 'POST'
+      ) {
+        return originalFetch.call(this, input, init);
       }
 
       try {
-        var body = JSON.parse(init.body);
+        const body = JSON.parse(init.body);
 
         // Only enrich if framework context is absent and an element selector is present.
         if (!body.framework && body.element) {
-          var el = document.querySelector(body.element);
+          const el = document.querySelector(body.element);
           if (el) {
-            var context = getTwigContext(el);
+            const context = getTwigContext(el);
             if (context) {
               body.framework = context;
-              init = Object.assign({}, init, { body: JSON.stringify(body) });
+              init = { ...init, body: JSON.stringify(body) };
             }
           }
         }
-      }
-      catch (e) {
+      } catch (e) {
         // JSON parse error or selector failure — pass through unmodified.
       }
 
@@ -144,7 +153,7 @@
    * Drupal behavior: entry point.
    */
   Drupal.behaviors.instruckt_twig_debug = {
-    attach: function (context, settings) {
+    attach(context, settings) {
       if (context !== document) {
         return;
       }
@@ -157,5 +166,4 @@
       installFetchInterceptor(settings.instruckt_drupal.endpoint);
     },
   };
-
-}(Drupal));
+})(Drupal);
