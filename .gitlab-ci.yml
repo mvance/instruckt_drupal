@@ -1,13 +1,14 @@
 # drupal.org GitLab CI — uses the standard contrib templates.
 # $_GITLAB_TEMPLATES_REPO and $_GITLAB_TEMPLATES_REF are injected automatically
 # by drupal.org's GitLab instance.
-#
-# Note: this module requires Asset Packagist (for npm-asset/instruckt) in the
-# root composer.json. If the CI pipeline fails on `composer require`, a
-# _COMPOSER_PROJECT override or equivalent variable will be needed to add the
-# Asset Packagist repository to the test environment.
 include:
   - project: $_GITLAB_TEMPLATES_REPO
     ref: $_GITLAB_TEMPLATES_REF
     file:
       - '/includes/include.drupalci.main.yml'
+      - '/includes/include.drupalci.variables.yml'
+      - '/includes/include.drupalci.workflows.yml'
+
+variables:
+  # Opt in to running tests against the current supported Drupal release.
+  OPT_IN_TEST_CURRENT: '1'
