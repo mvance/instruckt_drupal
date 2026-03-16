@@ -72,13 +72,8 @@ class AnnotationApiTest extends BrowserTestBase {
   private function getXsrfToken(): string {
     // GET /instruckt/annotations triggers InstrucktCsrfSubscriber to set the cookie.
     $this->drupalGet('/instruckt/annotations');
-    $jar = $this->getBrowserKitClient()->getCookieJar();
-    foreach ($jar->allValues($this->baseUrl) as $name => $value) {
-      if ($name === 'XSRF-TOKEN') {
-        return $value;
-      }
-    }
-    return '';
+    $cookie = $this->getBrowserKitClient()->getCookieJar()->get('XSRF-TOKEN');
+    return $cookie ? $cookie->getValue() : '';
   }
 
   /**

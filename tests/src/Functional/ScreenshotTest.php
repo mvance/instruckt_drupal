@@ -71,13 +71,8 @@ class ScreenshotTest extends BrowserTestBase {
    */
   private function getXsrfToken(): string {
     $this->drupalGet('/instruckt/annotations');
-    $jar = $this->getBrowserKitClient()->getCookieJar();
-    foreach ($jar->allValues($this->buildUrl('/')) as $name => $value) {
-      if ($name === 'XSRF-TOKEN') {
-        return $value;
-      }
-    }
-    return '';
+    $cookie = $this->getBrowserKitClient()->getCookieJar()->get('XSRF-TOKEN');
+    return $cookie ? $cookie->getValue() : '';
   }
 
   /**
