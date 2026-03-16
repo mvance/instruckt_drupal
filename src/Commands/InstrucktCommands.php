@@ -6,6 +6,8 @@ namespace Drupal\instruckt_drupal\Commands;
 
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\Core\File\FileSystemInterface;
+use Drupal\Core\StreamWrapper\StreamWrapperManagerInterface;
 use Drupal\key\KeyRepositoryInterface;
 use Drush\Commands\DrushCommands;
 
@@ -18,6 +20,8 @@ class InstrucktCommands extends DrushCommands {
     private readonly ConfigFactoryInterface $configFactory,
     private readonly EntityTypeManagerInterface $entityTypeManager,
     private readonly KeyRepositoryInterface $keyRepository,
+    private readonly FileSystemInterface $fileSystem,
+    private readonly StreamWrapperManagerInterface $streamWrapperManager,
   ) {
     parent::__construct();
   }
@@ -31,9 +35,9 @@ class InstrucktCommands extends DrushCommands {
    * @param array $options An associative array of options.
    *
    * @command instruckt:setup
-   * @option role  Drupal role to grant 'use mcp server'. Default: authenticated.
-   * @option user  UID or username MCP requests run as. Default: 1.
-   * @option key-id  Machine name for the auth token key entity. Default: instruckt_mcp_token.
+   * @option role  Drupal role to grant 'use mcp server'
+   * @option user  UID or username MCP requests run as
+   * @option key-id  Machine name for the auth token key entity
    * @usage drush instruckt:setup
    * @usage drush instruckt:setup --role=editor --user=2 --key-id=my_mcp_key
    * @aliases instruckt-setup
@@ -43,6 +47,64 @@ class InstrucktCommands extends DrushCommands {
     'user'   => '1',
     'key-id' => 'instruckt_mcp_token',
   ]): void {
+    // 0. Bootstrap private filesystem if not yet configured.
+    if ($this->streamWrapperManager->isValidScheme('private')) {
+      $this->output()->writeln('[skip] Private filesystem already configured.');
+    }
+    else {
+      $drupalRoot = \Drupal::root();
+      $targetPath = dirname($drupalRoot) . '/private';
+
+      // Create the directory outside web root (best practice).
+      if (!is_dir($targetPath)) {
+        if (!mkdir($targetPath, 0750, TRUE)) {
+          throw new \Exception(dt('Could not create private directory at @path. Check filesystem permissions.', ['@path' => $targetPath]));
+        }
+        $this->output()->writeln(dt('[done] Created private directory: @path', ['@path' => $targetPath]));
+      }
+      else {
+        $this->output()->writeln(dt('[skip] Private directory already exists: @path', ['@path' => $targetPath]));
+      }
+
+      // Append file_private_path to settings.php.
+      $settingsFile = $drupalRoot . '/sites/default/settings.php';
+      if (!is_writable($settingsFile)) {
+        $this->output()->writeln(dt(
+          "\n[manual] @file is not writable. Add this line manually:\n\$settings['file_private_path'] = '@path';",
+          ['@file' => $settingsFile, '@path' => $targetPath]
+        ));
+        return;
+      }
+      $settingsContents = file_get_contents($settingsFile);
+      if (str_contains($settingsContents, 'file_private_path')) {
+        $this->output()->writeln('[skip] file_private_path already present in settings.php.');
+      }
+      else {
+        file_put_contents($settingsFile, "\$settings['file_private_path'] = '{$targetPath}';\n", FILE_APPEND);
+        $this->output()->writeln(dt('[done] Appended file_private_path to @file', ['@file' => $settingsFile]));
+      }
+    }
+
+    // Create storage directories using native mkdir on the resolved FS path.
+    // (The private:// stream wrapper is not registered in this process even
+    // after writing settings.php, so we resolve the path directly.)
+    $privateBase = \Drupal::config('instruckt_drupal.settings')->get('storage_path');
+    // Resolve private:// to an FS path via config or fall back to the computed path.
+    $resolvedPrivate = $this->streamWrapperManager->isValidScheme('private')
+      ? $this->fileSystem->realpath('private://') ?: (dirname(\Drupal::root()) . '/private')
+      : dirname(\Drupal::root()) . '/private';
+    $instrucktDir   = $resolvedPrivate . '/_instruckt';
+    $screenshotsDir = $instrucktDir . '/screenshots';
+    foreach ([$instrucktDir, $screenshotsDir] as $dir) {
+      if (!is_dir($dir)) {
+        mkdir($dir, 0750, TRUE);
+        $this->output()->writeln(dt('[done] Created directory: @dir', ['@dir' => $dir]));
+      }
+      else {
+        $this->output()->writeln(dt('[skip] Directory already exists: @dir', ['@dir' => $dir]));
+      }
+    }
+
     // 1. Resolve user.
     $userStorage = $this->entityTypeManager->getStorage('user');
     $user = ctype_digit($options['user'])

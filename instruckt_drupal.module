@@ -27,18 +27,18 @@ function instruckt_drupal_library_info_build(): array {
   $iife_fs  = \Drupal::root() . '/libraries/instruckt/dist/instruckt.iife.js';
   $iife_key = '/libraries/instruckt/dist/instruckt.iife.js';
 
-  if (!file_exists($iife_fs) || !is_readable($iife_fs)) {
-    // File missing: hook_requirements() will report this as REQUIREMENT_ERROR.
-    // Returning early means 'instruckt_drupal/toolbar' won't exist as a library.
-    // hook_page_attachments() checks _instruckt_drupal_iife_available() before
-    // attaching, to avoid render-time "library not found" exceptions.
-    // twig-debug is still registered above.
-    return $libraries;
-  }
+  // Use local file if available; fall back to CDN so the toolbar works before
+  // the JS library is installed locally (e.g. before installer-paths is set up).
+  $cdn_url   = 'https://cdn.jsdelivr.net/npm/instruckt@0.4/dist/instruckt.iife.js';
+  $localExists = file_exists($iife_fs) && is_readable($iife_fs);
+  $jsSource    = $localExists ? $iife_key : $cdn_url;
+  $jsOptions   = $localExists
+    ? ['minified' => TRUE, 'weight' => -1]
+    : ['type' => 'external', 'minified' => TRUE, 'weight' => -1];
 
   $libraries['toolbar'] = [
     'js' => [
-      $iife_key => ['minified' => TRUE, 'weight' => -1],
+      $jsSource => $jsOptions,
       // Paths without a leading slash are relative to the module directory,
       // matching the convention used in .libraries.yml files.
       'js/instruckt-toolbar.js' => ['weight' => 0],
@@ -72,7 +72,9 @@ function instruckt_drupal_help($route_name, RouteMatchInterface $route_match) {
  * when hook_library_info_build() returned [] due to a missing IIFE file.
  */
 function _instruckt_drupal_iife_available(): bool {
-  return file_exists(\Drupal::root() . '/libraries/instruckt/dist/instruckt.iife.js');
+  // The toolbar library is always registered (local file or CDN fallback),
+  // so attaching it is always safe.
+  return TRUE;
 }
 
 /**

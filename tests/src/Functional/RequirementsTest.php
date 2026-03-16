@@ -68,9 +68,9 @@ class RequirementsTest extends BrowserTestBase {
   }
 
   /**
-   * Tests that hook_requirements reports ERROR when iife.js is absent.
+   * Tests that hook_requirements reports WARNING (CDN fallback) when iife.js is absent.
    */
-  public function testRequirementsErrorWhenIifeMissing(): void {
+  public function testRequirementsWarningWhenIifeMissing(): void {
     $iifePath = $this->getDrupalRoot() . '/libraries/instruckt/dist/instruckt.iife.js';
 
     // Temporarily rename the file if it exists.
@@ -89,7 +89,7 @@ class RequirementsTest extends BrowserTestBase {
     }
 
     $this->assertArrayHasKey('instruckt_drupal_js', $requirements);
-    $this->assertSame(REQUIREMENT_ERROR, $requirements['instruckt_drupal_js']['severity']);
+    $this->assertSame(REQUIREMENT_WARNING, $requirements['instruckt_drupal_js']['severity']);
   }
 
 }

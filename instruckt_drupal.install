@@ -8,16 +8,21 @@ function instruckt_drupal_install() {
   $storage_path = $config->get('storage_path');
   $file_system = \Drupal::service('file_system');
 
-  // prepareDirectory() requires a variable (not expression) — PHP 8 pass-by-ref.
-  $file_system->prepareDirectory(
-    $storage_path,
-    \Drupal\Core\File\FileSystemInterface::CREATE_DIRECTORY
-  );
-  $screenshots_path = $storage_path . '/screenshots';
-  $file_system->prepareDirectory(
-    $screenshots_path,
-    \Drupal\Core\File\FileSystemInterface::CREATE_DIRECTORY
-  );
+  // Only create directories if private:// is available. If not, drush
+  // instruckt:setup will create them after configuring the private path.
+  if (\Drupal::service('stream_wrapper_manager')->isValidScheme('private')) {
+    // prepareDirectory() requires a variable (not expression) — PHP 8 pass-by-ref.
+    $file_system->prepareDirectory(
+      $storage_path,
+      \Drupal\Core\File\FileSystemInterface::CREATE_DIRECTORY
+    );
+    $screenshots_path = $storage_path . '/screenshots';
+    $file_system->prepareDirectory(
+      $screenshots_path,
+      \Drupal\Core\File\FileSystemInterface::CREATE_DIRECTORY
+    );
+  }
+  // else: drush instruckt:setup will create directories after configuring the path.
 
   // Enable the instruckt_drupal plugin in mcp.settings.
   $mcp_config = \Drupal::configFactory()->getEditable('mcp.settings');
@@ -47,10 +52,11 @@ function instruckt_drupal_requirements($phase) {
       $requirements['instruckt_drupal_private_stream'] = [
         'title' => t('Instruckt storage: Private files'),
         'description' => t(
-          'The <code>private://</code> stream wrapper must be configured in <code>settings.php</code> '
-          . '(set <code>$settings["file_private_path"]</code>) before installing this module.'
+          'The <code>private://</code> stream wrapper is not yet configured. '
+          . 'Run <code>drush instruckt:setup</code> to complete setup (it will create '
+          . 'the private directory and configure <code>$settings["file_private_path"]</code>).'
         ),
-        'severity' => REQUIREMENT_ERROR,
+        'severity' => REQUIREMENT_WARNING,
       ];
     }
 
@@ -83,13 +89,14 @@ function instruckt_drupal_requirements($phase) {
     if (!file_exists($iife_path) || !is_readable($iife_path)) {
       $requirements['instruckt_drupal_js'] = [
         'title' => t('Instruckt JS library'),
-        'value' => t('Not found'),
+        'value' => t('CDN fallback active'),
         'description' => t(
-          'The instruckt IIFE bundle is missing at <code>web/libraries/instruckt/dist/instruckt.iife.js</code>. '
-          . 'Ensure <code>oomphinc/composer-installers-extender</code> is configured in your root <code>composer.json</code> '
-          . 'and run <code>composer require drupal/instruckt_drupal</code>.'
+          'Toolbar JS is loading from jsDelivr CDN (0.4.x). '
+          . 'For production or strict-CSP environments, install locally via Composer (see README): '
+          . 'configure <code>installer-paths</code> in your root <code>composer.json</code> and re-run '
+          . '<code>composer require drupal/instruckt_drupal</code>.'
         ),
-        'severity' => REQUIREMENT_ERROR,
+        'severity' => REQUIREMENT_WARNING,
       ];
     }
     else {

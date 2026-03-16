@@ -5,5 +5,7 @@ services:
       - '@config.factory'
       - '@entity_type.manager'
       - '@key.repository'
+      - '@file_system'
+      - '@stream_wrapper_manager'
     tags:
       - { name: drush.command }

@@ -16,35 +16,30 @@ Annotations are stored as JSON in the Drupal private filesystem (`private://_ins
 - Drupal 10 or 11
 - [drupal/mcp](https://www.drupal.org/project/mcp) ^1.2
 - PHP 8.1+
-- A configured private filesystem (`$settings['file_private_path']` in `settings.php`)
-- Root `composer.json` configured with [Asset Packagist](https://asset-packagist.org) and `oomphinc/composer-installers-extender` (see Installation)
-- `npm-asset/instruckt` JS library ([MIT](https://github.com/joshcirre/instruckt/blob/main/LICENSE)) — not bundled; downloaded automatically via Asset Packagist when you run `composer require`
 
 ## Installation
 
-### 1. Create the private filesystem directory
-
-Create the directory and configure its path in `settings.php`.
+### Quick install (3 commands)
 
 ```bash
-mkdir -p web/private
+composer require drupal/instruckt_drupal
+drush en mcp instruckt_drupal && drush cr
+drush instruckt:setup
 ```
 
-Then add to `web/sites/default/settings.php`:
+- `composer require` downloads the module. The toolbar JS loads from jsDelivr CDN (0.4.x) until the local library is installed — no `installer-paths` configuration required to get started.
+- `drush en` enables the module (installing with a warning if private filesystem isn't configured yet), enables the Instruckt MCP plugin, and grants `access instruckt_drupal toolbar` to the `authenticated` role.
+- `drush instruckt:setup` handles everything else: creates the private directory at `../private` (outside web root), appends `$settings['file_private_path']` to `settings.php`, creates the `_instruckt/` storage directories, grants `use mcp server` to a role, creates an auth token key, configures `mcp.settings`, and prints the `.mcp.json` snippet ready to use.
 
-```php
-$settings['file_private_path'] = '/absolute/server/path/to/web/private';
-```
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--role` | `authenticated` | Role to grant `use mcp server` |
+| `--user` | `1` | UID or username MCP requests run as |
+| `--key-id` | `instruckt_mcp_token` | Machine name for the auth token key entity |
 
-> **DDEV users:** Use the container path, not the host path:
-> ```php
-> $settings['file_private_path'] = '/var/www/html/web/private';
-> ```
-> The directory you created on the host (`web/private`) is bind-mounted at that path inside the container.
+### Optional: Install JS library locally (production / strict CSP)
 
-### 2. Configure root `composer.json` (one-time project setup)
-
-This module declares `oomphinc/composer-installers-extender` as a dependency and includes Asset Packagist in its own repository list, so Composer 2 resolves both automatically. You only need to allow the plugin and add the installer configuration to your project's root `composer.json`.
+By default the toolbar JS loads from CDN. To install it locally so that no external requests are made:
 
 Allow the oomphinc plugin (Composer's plugin security gate requires explicit approval):
 
@@ -66,55 +61,25 @@ Then edit `composer.json` to add `"installer-types"` and append `"type:npm-asset
 
 _Append `"type:npm-asset"` to any existing `"web/libraries/{$name}"` entry — do not replace the entire `extra` block._
 
-> **Note:** If you are on Composer 1, or if Asset Packagist is not resolved automatically, also run:
+> **Note:** If Asset Packagist is not resolved automatically, also run:
 > `composer config repositories.asset-packagist composer https://asset-packagist.org`
 
-### 3. Require the module
+Then re-run `composer require drupal/instruckt_drupal`. Composer will place `instruckt.iife.js` at `web/libraries/instruckt/dist/instruckt.iife.js` and the CDN warning on the status page will disappear.
 
-```bash
-composer require drupal/instruckt_drupal
-```
+### Verify
 
-This downloads the module and its JS dependency, placing `instruckt.iife.js` at `web/libraries/instruckt/dist/instruckt.iife.js`.
+Visit `/admin/reports/status` — Instruckt rows should show no errors. A **CDN fallback active** warning on the JS row is expected until local JS is installed.
 
-### 4. Enable the module
+<details>
+<summary>Manual MCP auth alternative</summary>
 
-```bash
-drush en mcp instruckt_drupal && drush cr
-```
-
-(Alternatively: `/admin/modules`.)
-
-**Automatically configured on install:** enabling the module enables the Instruckt MCP plugin and grants `access instruckt_drupal toolbar` to the `authenticated` role. Run `drush instruckt:setup` (next step) to grant `use mcp server` and configure token authentication.
-
-### 5. Configure MCP authentication
-
-```bash
-drush instruckt:setup
-```
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `--role` | `authenticated` | Role to grant `use mcp server` |
-| `--user` | `1` | UID or username MCP requests run as |
-| `--key-id` | `instruckt_mcp_token` | Machine name for the auth token key entity |
-
-The command prints the `.mcp.json` snippet with the base64-encoded token ready to use (replace the URL).
-
-> **Troubleshooting:** If the command exits with *"Could not find user"*, pass the UID explicitly:
-> ```bash
-> drush instruckt:setup --user=1
-> ```
-
-**Manual alternative:**
+Instead of `drush instruckt:setup`, you can configure MCP authentication manually:
 
 1. `/admin/config/system/keys` → Add key (type: Authentication, provider: Configuration, input: text field; generate value with `openssl rand -hex 32`)
 2. `/admin/config/mcp` → Authentication → enable Token Auth, select key, set token user
 3. Base64-encode the raw token: `echo -n "your-token" | base64` — use as `Authorization: Basic <value>`
 
-### 6. Verify the installation
-
-Visit `/admin/reports/status` and search for "Instruckt" — the JS library row should show **Installed**. If it shows an error, verify that `web/libraries/instruckt/dist/instruckt.iife.js` exists and that `file_private_path` is set in `settings.php`.
+</details>
 
 To confirm the MCP endpoint is returning the instruckt tools:
 

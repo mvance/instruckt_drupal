@@ -4,6 +4,6 @@ description: 'Visual feedback toolbar that works with AI coding agents.'
 core_version_requirement: ^10.3 || ^11
 php: '>=8.1'
 package: Development
-configure: instruckt_drupal.settings
+configure: instruckt_drupal.admin_settings
 dependencies:
   - mcp:mcp
