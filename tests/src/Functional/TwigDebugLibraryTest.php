@@ -47,7 +47,7 @@ class TwigDebugLibraryTest extends BrowserTestBase {
   public function testTwigDebugLibraryAttachedForAuthorizedUser(): void {
     $user = $this->drupalCreateUser(['access instruckt_drupal toolbar']);
     $this->drupalLogin($user);
-    $this->drupalGet('/');
+    $this->drupalGet('<front>');
     $this->assertSession()->responseContains('instruckt-twig-debug.js');
   }
 
@@ -57,7 +57,7 @@ class TwigDebugLibraryTest extends BrowserTestBase {
   public function testTwigDebugLibraryAbsentWithoutPermission(): void {
     $user = $this->drupalCreateUser([]);
     $this->drupalLogin($user);
-    $this->drupalGet('/');
+    $this->drupalGet('<front>');
     $this->assertSession()->responseNotContains('instruckt-twig-debug.js');
   }
 

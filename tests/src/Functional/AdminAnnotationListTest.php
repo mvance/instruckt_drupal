@@ -72,7 +72,7 @@ class AdminAnnotationListTest extends BrowserTestBase {
   private function getXsrfToken(): string {
     $this->drupalGet('/instruckt/annotations');
     $jar = $this->getBrowserKitClient()->getCookieJar();
-    foreach ($jar->allValues($this->buildUrl('/')) as $name => $value) {
+    foreach ($jar->allValues($this->baseUrl) as $name => $value) {
       if ($name === 'XSRF-TOKEN') {
         return $value;
       }
