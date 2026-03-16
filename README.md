@@ -1,3 +1,9 @@
+> **This repository has moved.** Development continues at
+> [drupal.org/project/instruckt_drupal](https://www.drupal.org/project/instruckt_drupal).
+> Please open issues and submit patches there.
+
+---
+
 # Instruckt Drupal
 
 A visual feedback toolbar for Drupal 10/11 that lets developers and reviewers click-annotate page elements, attach comments and screenshots, and expose those annotations to AI coding agents via the Model Context Protocol (MCP).
