@@ -72,8 +72,20 @@ class AnnotationApiTest extends BrowserTestBase {
   private function getXsrfToken(): string {
     // GET /instruckt/annotations triggers InstrucktCsrfSubscriber to set the cookie.
     $this->drupalGet('/instruckt/annotations');
-    $cookie = $this->getBrowserKitClient()->getCookieJar()->get('XSRF-TOKEN');
-    return $cookie ? $cookie->getValue() : '';
+    // Read XSRF-TOKEN directly from the HTTP response Set-Cookie header.
+    // CookieJar::get() is unreliable across Symfony 7.x in test environments.
+    $internalResponse = $this->getBrowserKitClient()->getInternalResponse();
+    foreach ($internalResponse->getHeaders() as $name => $values) {
+      if (strtolower((string) $name) === 'set-cookie') {
+        foreach ((array) $values as $setCookie) {
+          $setCookie = (string) $setCookie;
+          if (str_starts_with($setCookie, 'XSRF-TOKEN=')) {
+            return trim(explode(';', substr($setCookie, strlen('XSRF-TOKEN=')), 2)[0]);
+          }
+        }
+      }
+    }
+    return '';
   }
 
   /**
